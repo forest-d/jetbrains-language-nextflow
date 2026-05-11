@@ -48,9 +48,8 @@ intellijPlatform {
         name = "Nextflow"
         version = project.version.toString()
         description = """
-            Nextflow language support for JetBrains IDEs.
-            Provides syntax highlighting, code completion, diagnostics, navigation,
-            and more — powered by the Nextflow Language Server.
+            Nextflow language support for JetBrains IDEs, powered by the Nextflow Language Server.
+            Provides syntax highlighting, code completion, diagnostics, navigation, DAG preview, and more.
         """.trimIndent()
 
         ideaVersion {
@@ -59,8 +58,8 @@ intellijPlatform {
         }
 
         vendor {
-            name = "Nextflow"
-            url = "https://nextflow.io"
+            name = "Forest Dussault"
+            url = "https://github.com/forest-d"
         }
 
         changeNotes = """

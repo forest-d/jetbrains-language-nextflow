@@ -11,7 +11,6 @@ class NextflowStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         LOG.info("Nextflow plugin activated for project: ${project.name}")
 
-        // Pre-download the language server JAR in the background
         val versionPrefix = NextflowSettings.getInstance().state.languageServerVersion.versionPrefix
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->
             if (path != null) {

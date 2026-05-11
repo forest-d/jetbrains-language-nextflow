@@ -19,9 +19,6 @@ object LanguageServerDownloader {
     private const val CACHE_ROOT_PROPERTY = "nextflow.lsp.cacheRoot"
     const val DEFAULT_VERSION_PREFIX = "v26.04"
 
-    /**
-     * Get the cache directory: ~/.nextflow/lsp/{versionPrefix}/
-     */
     internal fun getCacheDir(versionPrefix: String): Path {
         val configuredRoot = System.getProperty(CACHE_ROOT_PROPERTY)
         val root = if (configuredRoot.isNullOrBlank()) {
@@ -32,9 +29,6 @@ object LanguageServerDownloader {
         return root.resolve(versionPrefix)
     }
 
-    /**
-     * Find the latest cached JAR for the given version prefix.
-     */
     fun findCachedJar(versionPrefix: String = DEFAULT_VERSION_PREFIX): Path? {
         val cacheDir = getCacheDir(versionPrefix)
         if (!Files.isDirectory(cacheDir)) return null
@@ -64,17 +58,13 @@ object LanguageServerDownloader {
         return left.compareTo(right)
     }
 
-    /**
-     * Resolve the latest release tag from GitHub for the given version prefix.
-     * Returns null if the network request fails.
-     */
     fun resolveLatestVersion(versionPrefix: String = DEFAULT_VERSION_PREFIX): String? {
         return try {
             val responseText = HttpRequests.request("$GITHUB_RELEASES_URL")
                 .accept("application/vnd.github.v3+json")
                 .readString()
 
-            // Simple JSON parsing — find tags matching our prefix
+            // Find tags matching our prefix
             val tagPattern = Regex(""""tag_name"\s*:\s*"(${Regex.escape(versionPrefix)}\.[^"]+)"""")
             val tags = tagPattern.findAll(responseText)
                 .map { it.groupValues[1] }
@@ -89,10 +79,6 @@ object LanguageServerDownloader {
         }
     }
 
-    /**
-     * Get the language server JAR path, downloading if necessary.
-     * Falls back to cached version if download fails.
-     */
     fun getOrDownload(versionPrefix: String = DEFAULT_VERSION_PREFIX): Path? {
         val resolvedVersion = resolveLatestVersion(versionPrefix)
         if (resolvedVersion != null) {
@@ -118,9 +104,6 @@ object LanguageServerDownloader {
         return cached
     }
 
-    /**
-     * Download the language server JAR to the given path.
-     */
     private fun downloadJar(version: String, targetPath: Path): Path? {
         val url = "$DOWNLOAD_BASE_URL/$version/$JAR_NAME"
         LOG.info("Downloading language server from $url")
@@ -144,9 +127,6 @@ object LanguageServerDownloader {
         }
     }
 
-    /**
-     * Download the language server with a progress dialog (runs on a background thread).
-     */
     fun ensureDownloaded(versionPrefix: String = DEFAULT_VERSION_PREFIX, onComplete: (Path?) -> Unit) {
         ProgressManager.getInstance().run(object : Task.Backgroundable(null, "Downloading Nextflow Language Server...", true) {
             override fun run(indicator: ProgressIndicator) {

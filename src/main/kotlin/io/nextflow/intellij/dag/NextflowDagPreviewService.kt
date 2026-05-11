@@ -8,24 +8,20 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.redhat.devtools.lsp4ij.LanguageServerManager
 import io.nextflow.intellij.lsp.NextflowLspRuntime
-import io.nextflow.intellij.lsp.nextflowLanguageId
 import io.nextflow.intellij.lsp.toLspUriString
+import io.nextflow.intellij.lsp.toVirtualFile
 import org.eclipse.lsp4j.CodeLens
 import org.eclipse.lsp4j.CodeLensParams
 import org.eclipse.lsp4j.Command
 import org.eclipse.lsp4j.ExecuteCommandParams
 import org.eclipse.lsp4j.Location
-import org.eclipse.lsp4j.ServerCapabilities
 import org.eclipse.lsp4j.SymbolInformation
 import org.eclipse.lsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceSymbol
 import org.eclipse.lsp4j.WorkspaceSymbolParams
 import org.eclipse.lsp4j.services.LanguageServer
-import java.net.URI
-import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
@@ -48,13 +44,6 @@ object NextflowDagPreviewService {
 
             item.initializedServer
                 .thenCompose { server ->
-                    LOG.info("Nextflow LSP capabilities: ${item.serverCapabilities.toDebugSummary()}")
-                    LOG.info(
-                        "Nextflow LSP opened documents before DAG preview: " +
-                            item.serverWrapper.openedDocuments.joinToString(prefix = "[", postfix = "]") {
-                                item.serverWrapper.toUriString(it.file)
-                        }
-                    )
                     NextflowLspRuntime.ensureWorkspaceInitialized(project, server)
                         .thenCompose { NextflowLspRuntime.ensureDocumentSynchronized(server, sourceFile) }
                         .thenCompose { findDagCommand(server, sourceFile, caretLine) }
@@ -133,8 +122,6 @@ object NextflowDagPreviewService {
         caretLine: Int,
     ): CompletableFuture<DagCommand> {
         val uri = sourceFile.toLspUriString()
-        LOG.info("Nextflow LSP direct codeLens request file=${sourceFile.path} uri=$uri languageId=${sourceFile.nextflowLanguageId()}")
-
         return requestCodeLenses(server, sourceFile, uri, attempt = 1)
             .thenCompose { lenses ->
                 val lens = lenses
@@ -168,10 +155,6 @@ object NextflowDagPreviewService {
             .codeLens(CodeLensParams(TextDocumentIdentifier(uri)))
             .thenCompose { result ->
                 val lenses = result.orEmpty()
-                LOG.info(
-                    "Nextflow LSP direct codeLens response file=${sourceFile.path} " +
-                        "attempt=$attempt count=${lenses.size} commands=${lenses.map { it.command?.command to it.command?.arguments }}"
-                )
                 if (lenses.none { it.isPreviewDagLens() } && attempt < CODE_LENS_ATTEMPTS) {
                     CompletableFuture
                         .supplyAsync({ Unit }, CompletableFuture.delayedExecutor(CODE_LENS_RETRY_DELAY_MS, TimeUnit.MILLISECONDS))
@@ -223,11 +206,6 @@ object NextflowDagPreviewService {
         return NamedLocation(name, location)
     }
 
-    private fun Location.toVirtualFile(): VirtualFile? {
-        return VirtualFileManager.getInstance().findFileByUrl(uri)
-            ?: runCatching { VirtualFileManager.getInstance().findFileByNioPath(Path.of(URI(uri))) }.getOrNull()
-    }
-
     private fun String.normalizeNodeLabel(): String {
         return trim()
             .removePrefix("[")
@@ -238,14 +216,6 @@ object NextflowDagPreviewService {
             .removeSuffix("\"")
             .replace(Regex("""\s+"""), " ")
             .trim()
-    }
-
-    private fun ServerCapabilities?.toDebugSummary(): String {
-        if (this == null) return "unavailable"
-        return "documentSymbolProvider=$documentSymbolProvider, " +
-            "workspaceSymbolProvider=$workspaceSymbolProvider, " +
-            "codeLensProvider=$codeLensProvider, " +
-            "executeCommandProvider=$executeCommandProvider"
     }
 
     private fun Throwable.rootMessage(): String {

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Licensing and Polish</title>
+<meta name="feature" content="licensing-and-polish">
+<meta name="status" content="done">
+<meta name="created" content="2026-05-11">
+<meta name="updated" content="2026-05-11">
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+         line-height: 1.6; }
+  .phase { margin: 1.5rem 0; }
+  .step { padding: 0.25rem 0; }
+  .step::before { content: "\2610"; margin-right: 0.5rem; }
+  .step.done::before { content: "\2611"; }
+</style>
+</head>
+<body>
+
+<h1>Licensing and Polish</h1>
+
+<section id="context">
+<h2>Context</h2>
+<p>Prepare the Nextflow JetBrains plugin for public distribution on the JetBrains Marketplace
+as MIT-licensed free software. This covers four areas: licensing/attribution, marketplace
+metadata, LLM-style artifact removal, and code quality cleanup.</p>
+
+<h3>Licensing landscape</h3>
+<ul>
+  <li><strong>Nextflow Language Server</strong> (Apache 2.0) - downloaded at runtime, not bundled.
+      Apache 2.0 is compatible with MIT; attribution required.</li>
+  <li><strong>VS Code Nextflow Extension</strong> (MIT) - TextMate grammars copied from this repo
+      into <code>src/main/resources/textmate/</code>. MIT-to-MIT is straightforward; attribution required.</li>
+  <li><strong>LSP4IJ</strong> (EPL 2.0) - installed as a separate plugin dependency, not bundled.</li>
+</ul>
+
+<h3>Marketplace best practices</h3>
+<ul>
+  <li>Plugin name should be 1-4 words, no "Plugin" or "Support" suffix.</li>
+  <li>Vendor should reflect the actual author, not a project name.</li>
+  <li>Description first 40 characters generate preview cards.</li>
+  <li>No em dashes, marketing language, or LLM-style phrasing.</li>
+  <li>Plugin icons required (already present).</li>
+</ul>
+</section>
+
+<section class="phase" id="phase-1">
+<h2>Phase 1: Licensing and Attribution</h2>
+<p>Establish MIT licensing and properly credit upstream dependencies.</p>
+
+<div class="step done" data-status="done">Add an MIT <code>LICENSE</code> file to the project root (author: Forest Dussault)</div>
+<div class="step done" data-status="done">Add <code>THIRD-PARTY-NOTICES.md</code> crediting TextMate grammars (from vscode-language-nextflow, MIT) and the Nextflow Language Server (Apache 2.0, downloaded at runtime)</div>
+<div class="step done" data-status="done">Update <code>README.md</code> License section from "TBD" to reference the MIT license</div>
+<div class="step done" data-status="done">Add origin comment to the TextMate <code>package.json</code> noting it was derived from vscode-language-nextflow</div>
+</section>
+
+<section class="phase" id="phase-2">
+<h2>Phase 2: Plugin Metadata for Marketplace</h2>
+<p>Update plugin metadata to meet JetBrains Marketplace listing best practices.</p>
+
+<div class="step done" data-status="done">Update vendor in <code>plugin.xml</code> and <code>build.gradle.kts</code> from "Nextflow" to Forest Dussault with appropriate URL/email</div>
+<div class="step done" data-status="done">Improve plugin description per marketplace best practices (clear value proposition, no em dashes, optimize first 40 characters)</div>
+<div class="step done" data-status="done">Verify plugin icon files (<code>pluginIcon.svg</code>, <code>pluginIcon_dark.svg</code>) are present and meet guidelines</div>
+<div class="step done" data-status="done">Remove <code>docs/distribution/private-distribution.md</code> (contains hardcoded local paths, obsolete for marketplace distribution)</div>
+<div class="step done" data-status="done">Clean up <code>README.md</code>: remove dogfooding-specific sections and hardcoded local paths</div>
+</section>
+
+<section class="phase" id="phase-3">
+<h2>Phase 3: Remove LLM Artifacts</h2>
+<p>Eliminate em dashes, overly verbose comments, and debug-phase logging.</p>
+
+<div class="step done" data-status="done">Replace em dashes throughout: <code>build.gradle.kts</code> description, <code>plugin.xml</code> description, <code>README.md</code>, <code>LanguageServerDownloader.kt</code></div>
+<div class="step done" data-status="done">Remove overly verbose/restating comments (e.g. <code>// Pre-download the language server JAR in the background</code>, JavaDoc that restates the function name)</div>
+<div class="step done" data-status="done">Trim excessive <code>LOG.info</code> calls that log capability summaries and opened-document lists (Phase 9 debug leftovers)</div>
+</section>
+
+<section class="phase" id="phase-4">
+<h2>Phase 4: Code Quality Cleanup</h2>
+<p>Deduplicate shared helpers, remove dead tests, and verify the build.</p>
+
+<div class="step done" data-status="done">Extract duplicated <code>Location.toVirtualFile()</code> from <code>NextflowProjectView</code> and <code>NextflowDagPreviewService</code> into a shared extension</div>
+<div class="step done" data-status="done">Extract duplicated <code>ServerCapabilities?.toDebugSummary()</code> into shared code or remove if debug logging is trimmed</div>
+<div class="step done" data-status="done">Consolidate <code>String.isNextflowPath()</code> and <code>String.isNextflowScriptPath()</code> which overlap</div>
+<div class="step done" data-status="done">Remove <code>NextflowDagPreviewEditorProviderTest</code> (tests a trivially obvious implementation detail from Phase 9 debugging)</div>
+<div class="step done" data-status="done">Remove <code>docs/screenshots/README.md</code> placeholder (checklist with no screenshots)</div>
+<div class="step done" data-status="done">Run <code>./gradlew build</code> to verify nothing breaks</div>
+</section>
+
+<section id="notes">
+<h2>Notes</h2>
+<p><strong>2026-05-11:</strong> Plan created after full codebase review. Key findings:</p>
+<ul>
+  <li>No LICENSE file exists; README says "TBD".</li>
+  <li>Vendor is set to "Nextflow" / nextflow.io but the actual author is Forest Dussault.</li>
+  <li>Em dashes appear in plugin description, build config, and README.</li>
+  <li>Phase 9 debug logging is still present (capability summaries, opened document lists).</li>
+  <li><code>Location.toVirtualFile()</code> and <code>toDebugSummary()</code> are duplicated across two files.</li>
+  <li>TextMate grammars from vscode-language-nextflow (MIT) have no attribution.</li>
+</ul>
+</section>
+
+</body>
+</html>

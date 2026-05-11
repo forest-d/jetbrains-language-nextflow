@@ -8,10 +8,6 @@ object JavaFinder {
     private val LOG = Logger.getInstance(JavaFinder::class.java)
     private const val MIN_JAVA_VERSION = 17
 
-    /**
-     * Find a Java executable suitable for running the language server.
-     * Search order: plugin setting → JAVA_HOME env → IDE runtime → PATH.
-     */
     fun findJava(configuredJavaHome: String? = null): String? {
         return findJava(
             configuredJavaHome,
@@ -74,9 +70,6 @@ object JavaFinder {
         return null
     }
 
-    /**
-     * Check that the given Java executable is at least version [MIN_JAVA_VERSION].
-     */
     fun checkVersion(javaPath: String): Boolean {
         return try {
             val process = ProcessBuilder(javaPath, "-version")

@@ -17,12 +17,13 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.treeStructure.Tree
 import com.redhat.devtools.lsp4ij.LanguageServerManager
 import io.nextflow.intellij.lsp.NextflowLspRuntime
+import io.nextflow.intellij.lsp.isNextflowPath
 import io.nextflow.intellij.lsp.nextflowLanguageId
 import io.nextflow.intellij.lsp.toLspUriString
+import io.nextflow.intellij.lsp.toVirtualFile
 import org.eclipse.lsp4j.DocumentSymbol
 import org.eclipse.lsp4j.DocumentSymbolParams
 import org.eclipse.lsp4j.Location
-import org.eclipse.lsp4j.ServerCapabilities
 import org.eclipse.lsp4j.SymbolInformation
 import org.eclipse.lsp4j.SymbolKind
 import org.eclipse.lsp4j.TextDocumentIdentifier
@@ -113,13 +114,6 @@ class NextflowProjectView(private val project: Project) : Disposable {
             }
 
             item.initializedServer.thenCompose { server ->
-                LOG.info("Nextflow LSP capabilities: ${item.serverCapabilities.toDebugSummary()}")
-                LOG.info(
-                    "Nextflow LSP opened documents before symbol refresh: " +
-                        item.serverWrapper.openedDocuments.joinToString(prefix = "[", postfix = "]") {
-                            item.serverWrapper.toUriString(it.file)
-                        }
-                )
                 NextflowLspRuntime.ensureWorkspaceInitialized(project, server)
                     .thenCompose {
                         loadDocumentSymbols(server).thenCompose { documentSymbols ->
@@ -158,15 +152,13 @@ class NextflowProjectView(private val project: Project) : Disposable {
     private fun loadWorkspaceSymbols(server: LanguageServer): CompletableFuture<List<ProjectSymbol>> {
         return server.workspaceService.symbol(WorkspaceSymbolParams("workflow"))
             .thenApply { result ->
-                val symbols = result?.let { either ->
+                result?.let { either ->
                     if (either.isLeft) {
                         either.left.mapNotNull { it.toProjectSymbol() }
                     } else {
                         either.right.mapNotNull { it.toProjectSymbol() }
                     }
                 }.orEmpty()
-                LOG.info("Nextflow LSP workspace/symbol query='workflow' count=${symbols.size}")
-                symbols
             }
             .exceptionally { error ->
                 LOG.warn("Nextflow LSP workspace/symbol query='workflow' failed", error)
@@ -182,8 +174,6 @@ class NextflowProjectView(private val project: Project) : Disposable {
 
         val futures: List<CompletableFuture<List<ProjectSymbol>>> = files.map { file ->
             val uri = file.toLspUriString()
-            LOG.info("Nextflow LSP direct documentSymbol request file=${file.path} uri=$uri languageId=${file.nextflowLanguageId()}")
-
             NextflowLspRuntime.ensureDocumentSynchronized(server, file)
                 .thenCompose { requestDocumentSymbols(server, file, uri, attempt = 1) }
                 .exceptionally { error ->
@@ -213,7 +203,6 @@ class NextflowProjectView(private val project: Project) : Disposable {
                         either.right.toProjectSymbols(uri)
                     }
                 }
-                LOG.info("Nextflow LSP direct documentSymbol response file=${file.path} attempt=$attempt count=${symbols.size} names=${symbols.map { it.name }}")
                 if (symbols.isEmpty() && attempt < DOCUMENT_SYMBOL_ATTEMPTS) {
                     CompletableFuture
                         .supplyAsync({ Unit }, CompletableFuture.delayedExecutor(DOCUMENT_SYMBOL_RETRY_DELAY_MS, TimeUnit.MILLISECONDS))
@@ -319,19 +308,11 @@ class NextflowProjectView(private val project: Project) : Disposable {
         return ProjectSymbol(name.toDisplaySymbolName(), kind, containerName, location, SymbolCategory.from(name, kind, containerName))
     }
 
-    private fun Location.toVirtualFile(): VirtualFile? {
-        return VirtualFileManager.getInstance().findFileByUrl(uri)
-            ?: runCatching { VirtualFileManager.getInstance().findFileByNioPath(Path.of(URI(uri))) }.getOrNull()
-    }
-
     private fun String?.isNextflowUri(): Boolean {
         if (this.isNullOrBlank()) return false
         val path = runCatching { Path.of(URI(this)).toString() }.getOrDefault(this)
         return path.isNextflowPath()
     }
-
-    private fun String.isNextflowPath(): Boolean =
-        endsWith(".nf") || endsWith(".nf.test") || endsWith("nextflow.config")
 
     private fun String.toDisplaySymbolName(): String {
         return removePrefix("process ")
@@ -339,14 +320,6 @@ class NextflowProjectView(private val project: Project) : Disposable {
             .removePrefix("function ")
             .removePrefix("record ")
             .removePrefix("enum ")
-    }
-
-    private fun ServerCapabilities?.toDebugSummary(): String {
-        if (this == null) return "unavailable"
-        return "documentSymbolProvider=$documentSymbolProvider, " +
-            "workspaceSymbolProvider=$workspaceSymbolProvider, " +
-            "codeLensProvider=$codeLensProvider, " +
-            "executeCommandProvider=$executeCommandProvider"
     }
 
     companion object {

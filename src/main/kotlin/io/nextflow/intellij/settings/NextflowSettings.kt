@@ -89,7 +89,6 @@ class NextflowSettings : PersistentStateComponent<NextflowSettings.State> {
             "java" to mapOf("home" to state.javaHome.ifBlank { null }),
             "languageVersion" to state.languageServerVersion.versionPrefix,
             "targetVersion" to state.languageServerVersion.versionPrefix,
-            // The language server's native configuration shape uses these flat field names.
             "excludePatterns" to excludes,
             "extendedCompletion" to state.completionExtended,
             "harshilAlignment" to state.harshilAlignment,

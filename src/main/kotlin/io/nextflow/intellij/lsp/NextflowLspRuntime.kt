@@ -32,7 +32,7 @@ object NextflowLspRuntime {
 
         val future = CompletableFuture.runAsync {
             val rootUri = project.basePath?.let { Path.of(it).toUri().toString() } ?: return@runAsync
-            LOG.info("Initializing Nextflow LSP workspace root=$rootUri")
+            LOG.debug("Initializing Nextflow LSP workspace root=$rootUri")
             server.workspaceService.didChangeConfiguration(DidChangeConfigurationParams(NextflowSettings.getInstance().toFlatLspSettings()))
             server.workspaceService.didChangeWorkspaceFolders(
                 DidChangeWorkspaceFoldersParams(
@@ -64,14 +64,14 @@ object NextflowLspRuntime {
             }
 
             if (nextVersion == 1) {
-                LOG.info("Opening Nextflow LSP document uri=$uri languageId=${file.nextflowLanguageId()} version=$nextVersion")
+                LOG.debug("Opening LSP document uri=$uri version=$nextVersion")
                 server.textDocumentService.didOpen(
                     DidOpenTextDocumentParams(
                         TextDocumentItem(uri, file.nextflowLanguageId(), nextVersion, text)
                     )
                 )
             } else {
-                LOG.info("Synchronizing Nextflow LSP document uri=$uri version=$nextVersion")
+                LOG.debug("Synchronizing LSP document uri=$uri version=$nextVersion")
                 server.textDocumentService.didChange(
                     DidChangeTextDocumentParams(
                         VersionedTextDocumentIdentifier(uri, nextVersion),
