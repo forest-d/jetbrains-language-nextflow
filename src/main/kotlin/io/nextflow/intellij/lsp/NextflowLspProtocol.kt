@@ -7,7 +7,11 @@ import java.net.URI
 import java.nio.file.Path
 
 fun VirtualFile.toLspUriString(): String {
-    return toNioPath()?.toUri()?.toString() ?: url
+    return toLspPath()?.toUri()?.toString() ?: url
+}
+
+fun VirtualFile.toLspPath(): Path? {
+    return runCatching { toNioPath() }.getOrNull()
 }
 
 fun VirtualFile.nextflowLanguageId(): String {

@@ -14,23 +14,23 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 1.1 | Open `main.nf` | Keywords (`process`, `workflow`, `include`, `from`) are highlighted; strings, comments, and operators are distinct colors | | |
-| 1.2 | Open `nextflow.config` | Block names (`params`, `process`, `profiles`, `manifest`) highlighted as keywords; string interpolation (`${params.output_dir}`) highlighted differently from plain strings | | |
-| 1.3 | Open `modules/sample_module.nf` | Same highlighting rules as `main.nf`; no rendering artifacts from the module structure | | |
-| 1.4 | Verify comment styles | Block comments (`/* */`), line comments (`//`), and Javadoc (`/** */`) each render distinctly | | |
-| 1.5 | Verify Groovy embedded syntax | Closures, string interpolation, ternary expressions, and regex literals inside script blocks are highlighted | | |
+| 1.1 | Open `main.nf` | Keywords (`process`, `workflow`, `include`, `from`) are highlighted; strings, comments, and operators are distinct colors | PASS | |
+| 1.2 | Open `nextflow.config` | Block names (`params`, `process`, `profiles`, `manifest`) highlighted as keywords; string interpolation (`${params.output_dir}`) highlighted differently from plain strings | PASS | Config block names NOT highlighted — same in VS Code (upstream grammar limitation) |
+| 1.3 | Open `modules/sample_module.nf` | Same highlighting rules as `main.nf`; no rendering artifacts from the module structure | PASS | |
+| 1.4 | Verify comment styles | Block comments (`/* */`), line comments (`//`), and Javadoc (`/** */`) each render distinctly | PASS | |
+| 1.5 | Verify Groovy embedded syntax | Closures, string interpolation, ternary expressions, and regex literals inside script blocks are highlighted | PASS | |
 
 ## 2. Diagnostics & Error Reporting
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 2.1 | Open `main.nf` with no errors | No red/yellow squiggles in a valid file | | |
-| 2.2 | Add typo: change `FASTQC(reads_ch)` to `FASTQX(reads_ch)` | Red squiggle on `FASTQX`; error in Problems panel | | |
-| 2.3 | Set error reporting to "Off" | All squiggles disappear | | |
-| 2.4 | Set error reporting to "Errors" | Only red (error) squiggles visible | | |
-| 2.5 | Set error reporting to "Warnings" | Red and yellow squiggles visible | | |
-| 2.6 | Set error reporting to "Paranoid" | All diagnostics visible including hints/info | | |
-| 2.7 | Verify diagnostics in `nextflow.config` | Introduce a syntax error in config; verify it's reported | | |
+| 2.1 | Open `main.nf` with no errors | No red/yellow squiggles in a valid file | PASS | Diagnostics appear after initial LS startup (~5s) |
+| 2.2 | Add typo: change `FASTQC(reads_ch)` to `FASTQX(reads_ch)` | Red squiggle on `FASTQX`; error in Problems panel | PASS | Real-time diagnostics now appear without Ctrl+S after the `NextflowRealtimeDiagnostics` bridge fix. |
+| 2.3 | Set error reporting to "Off" | All squiggles disappear | **FAIL** | Squiggles remain after changing to Off and clicking Apply. **BUG: error reporting toggle broken.** Turning error checking off currently has no visible effect. |
+| 2.4 | Set error reporting to "Errors" | Only red (error) squiggles visible | | Not tested — blocked by 2.3 |
+| 2.5 | Set error reporting to "Warnings" | Red and yellow squiggles visible | | Not tested — blocked by 2.3 |
+| 2.6 | Set error reporting to "Paranoid" | All diagnostics visible including hints/info | | Not tested — blocked by 2.3 |
+| 2.7 | Verify diagnostics in `nextflow.config` | Introduce a syntax error in config; verify it's reported | | Not yet tested |
 
 ## 3. Hover Information
 
@@ -148,19 +148,31 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 ## Summary
 
-| Category | Total | Pass | Fail | Skipped |
-|----------|-------|------|------|---------|
-| Syntax Highlighting | 5 | | | |
-| Diagnostics | 7 | | | |
-| Hover | 6 | | | |
-| Completion | 7 | | | |
-| Navigation | 7 | | | |
-| Renaming | 4 | | | |
-| Formatting | 5 | | | |
-| DAG Preview | 6 | | | |
-| Project View | 7 | | | |
-| Status Bar | 3 | | | |
-| Settings | 5 | | | |
-| LS Management | 4 | | | |
-| Param Schema | 3 | | | |
-| **Total** | **69** | | | |
+| Category | Total | Pass | Fail | Blocked | Not tested |
+|----------|-------|------|------|---------|------------|
+| Syntax Highlighting | 5 | 5 | 0 | 0 | 0 |
+| Diagnostics | 7 | 2 | 1 | 3 | 1 |
+| Hover | 6 | 0 | 0 | 0 | 6 |
+| Completion | 7 | 0 | 0 | 0 | 7 |
+| Navigation | 7 | 0 | 0 | 0 | 7 |
+| Renaming | 4 | 0 | 0 | 0 | 4 |
+| Formatting | 5 | 0 | 0 | 0 | 5 |
+| DAG Preview | 6 | 0 | 0 | 0 | 6 |
+| Project View | 7 | 0 | 0 | 0 | 7 |
+| Status Bar | 3 | 0 | 0 | 0 | 3 |
+| Settings | 5 | 0 | 0 | 0 | 5 |
+| LS Management | 4 | 0 | 0 | 0 | 4 |
+| Param Schema | 3 | 0 | 0 | 0 | 3 |
+| **Total** | **69** | **7** | **1** | **3** | **58** |
+
+### Open Bugs
+
+| Bug | Severity | Status | Description |
+|-----|----------|--------|-------------|
+| Error reporting toggle broken | Medium | Investigating | Changing error reporting mode to Off has no visible effect; existing squiggles remain. Next step: inspect/fix the settings notification and diagnostic refresh path. |
+
+### Resolved Bugs
+
+| Bug | Resolution |
+|-----|------------|
+| Diagnostics not real-time | Fixed and manually verified. `NextflowRealtimeDiagnostics` sends debounced full-text `textDocument/didChange` for real Nextflow files without saving. |

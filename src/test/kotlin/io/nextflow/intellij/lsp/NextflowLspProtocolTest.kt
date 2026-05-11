@@ -1,6 +1,7 @@
 package io.nextflow.intellij.lsp
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.LightVirtualFile
 import org.eclipse.lsp4j.DidOpenTextDocumentParams
 import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.services.TextDocumentService
@@ -27,6 +28,13 @@ class NextflowLspProtocolTest : BasePlatformTestCase() {
         assertEquals(file.toNioPath().toUri().toString(), file.toLspUriString())
     }
 
+    fun testLspUriFallsBackForLightVirtualFile() {
+        val file = LightVirtualFile("main.nf", "workflow { }")
+
+        assertEquals(file.url, file.toLspUriString())
+        assertFalse(NextflowRealtimeDiagnostics.canSynchronize(file))
+    }
+
     fun testDocumentSynchronizationReadsDocumentFromBackgroundThread() {
         val file = myFixture.addFileToProject("main.nf", "workflow { main: }").virtualFile
         val didOpen = AtomicReference<DidOpenTextDocumentParams>()
@@ -37,6 +45,18 @@ class NextflowLspProtocolTest : BasePlatformTestCase() {
         assertEquals(file.toLspUriString(), didOpen.get().textDocument.uri)
         assertEquals("nextflow", didOpen.get().textDocument.languageId)
         assertEquals("workflow { main: }", didOpen.get().textDocument.text)
+    }
+
+    fun testRealtimeDiagnosticsDidChangeUsesFullDocumentTextWithoutVersion() {
+        val file = myFixture.addFileToProject("main.nf", "workflow { main: FASTQX() }").virtualFile
+
+        val didChange = NextflowRealtimeDiagnostics.createDidChangeParams(file, "workflow { main: FASTQX() }")
+
+        assertEquals(file.toLspUriString(), didChange.textDocument.uri)
+        assertNull(didChange.textDocument.version)
+        assertEquals(1, didChange.contentChanges.size)
+        assertNull(didChange.contentChanges.single().range)
+        assertEquals("workflow { main: FASTQX() }", didChange.contentChanges.single().text)
     }
 
     private fun languageServerCapturingDidOpen(

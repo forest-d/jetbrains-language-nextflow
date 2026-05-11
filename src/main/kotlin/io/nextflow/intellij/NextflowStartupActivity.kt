@@ -5,11 +5,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import io.nextflow.intellij.NextflowNotifications
 import io.nextflow.intellij.lsp.LanguageServerDownloader
+import io.nextflow.intellij.lsp.NextflowRealtimeDiagnostics
 import io.nextflow.intellij.settings.NextflowSettings
 
 class NextflowStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         LOG.info("Nextflow plugin activated for project: ${project.name}")
+        NextflowRealtimeDiagnostics.install(project)
 
         val versionPrefix = NextflowSettings.getInstance().state.languageServerVersion.versionPrefix
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->

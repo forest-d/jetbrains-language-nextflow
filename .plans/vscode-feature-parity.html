@@ -59,11 +59,11 @@ to confirm feature parity and close remaining gaps.</p>
     <td>Same TextMate grammars via bundleProvider</td>
     <td>Parity &mdash; verify</td>
   </tr>
-  <tr class="parity">
+  <tr class="gap">
     <td>Diagnostics &amp; error reporting</td>
-    <td>LSP + configurable mode</td>
-    <td>LSP + ErrorReportingMode enum</td>
-    <td>Parity &mdash; verify</td>
+    <td>LSP + configurable mode; real-time on edit</td>
+    <td>LSP + ErrorReportingMode enum; real-time bridge verified; mode toggle broken</td>
+    <td><strong>Gap &mdash; error reporting setting has no effect</strong></td>
   </tr>
   <tr class="parity">
     <td>Hover information</td>
@@ -214,8 +214,8 @@ plus a structured manual test checklist and any automated test additions.</p>
 <p>Run through each LSP-backed and UI feature against the test fixtures, documenting
 results. Fix any regressions or gaps found during verification.</p>
 
-<div class="step" data-status="pending">Syntax highlighting: open each fixture file type (.nf, .nf.test, nextflow.config) and visually verify keyword, string, comment, and operator highlighting matches VS Code output</div>
-<div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes</div>
+<div class="step done" data-status="done">Syntax highlighting: open each fixture file type (.nf, .nf.test, nextflow.config) and visually verify keyword, string, comment, and operator highlighting matches VS Code output</div>
+<div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes <strong>[BLOCKED: error-reporting toggle bug &mdash; see notes]</strong></div>
 <div class="step" data-status="pending">Hover: hover over process names, function calls, channel variables, and params; verify tooltip shows definition and any Javadoc; compare content with VS Code hover output</div>
 <div class="step" data-status="pending">Code completion: trigger completion inside a workflow body for process names, channel methods, and params; verify extended completion surfaces symbols from modules/sample_module.nf when enabled</div>
 <div class="step" data-status="pending">Code navigation: Ctrl+click on a process call to verify go-to-definition; use Find Usages on a process name to verify find-references; test cross-file navigation to modules/</div>
@@ -311,6 +311,105 @@ and our JetBrains plugin. Add automated regression tests where feasible.</p>
   <li><strong>Project view hierarchy</strong> &mdash; the VS Code extension's tree view is a
       differentiating feature; it may require call hierarchy LSP support or walking the
       DAG structure. Research needed in Phase 5.</li>
+</ul>
+
+<p><strong>2026-05-11:</strong> Phase 2 partial &mdash; syntax highlighting verified, two diagnostics bugs found.</p>
+
+<h3>Syntax Highlighting Results</h3>
+<ul>
+  <li><strong>1.1 main.nf:</strong> Pass &mdash; keywords, strings, comments, operators highlighted correctly.</li>
+  <li><strong>1.2 nextflow.config:</strong> Pass (with note) &mdash; config block names (<code>params</code>, <code>process</code>,
+      <code>profiles</code>, <code>manifest</code>) are NOT highlighted, but this matches VS Code behavior.
+      The upstream TextMate grammar (<code>nextflow-config.tmLanguage.json</code>) only highlights
+      <code>includeConfig</code> and delegates everything else to the Groovy grammar. This is an
+      upstream limitation, not a parity gap.</li>
+  <li><strong>1.3 modules/sample_module.nf:</strong> Pass.</li>
+  <li><strong>1.4 Comment styles:</strong> Pass.</li>
+  <li><strong>1.5 Groovy embedded syntax:</strong> Pass.</li>
+</ul>
+
+<h3>Bug: Diagnostics Only Fire on Save (not real-time)</h3>
+<p><strong>Symptom:</strong> Editing a file (e.g., renaming <code>FASTQC</code> to <code>FASTQX</code>) does not
+produce red squiggles until the user presses Ctrl+S. VS Code shows diagnostics in
+real-time as the user types.</p>
+<p><strong>Investigation:</strong></p>
+<ul>
+  <li>The Nextflow LS reports <code>TextDocumentSyncKind.Incremental</code> (value 2) and
+      handles <code>textDocument/didChange</code> with a delayed-update mechanism. Other editors
+      (Neovim, Helix) get real-time diagnostics from the same server.</li>
+  <li>LSP4IJ creates a <code>DocumentContentSynchronizer</code> that listens for IntelliJ
+      document changes and sends <code>textDocument/didChange</code>. It debounces via
+      <code>PsiDocumentManager.performForCommittedDocument()</code>.</li>
+  <li><strong>Attempted fix 1:</strong> Added <code>NextflowLanguageClient</code> with
+      <code>handleServerStatusChanged(started)</code> that sends
+      <code>workspace/didChangeWorkspaceFolders</code> and <code>didChangeConfiguration</code>.
+      Result: diagnostics appeared on initial load and on save, but not on edit.</li>
+  <li><strong>Attempted fix 2:</strong> After workspace init, manually re-sent
+      <code>textDocument/didOpen</code> for all open Nextflow files. Result: no improvement;
+      the manual <code>didOpen</code> likely conflicted with LSP4IJ&rsquo;s internal version
+      tracking, preventing its <code>didChange</code> from reaching the server correctly.</li>
+  <li><strong>Intermediate state:</strong> Stripped <code>NextflowLanguageClient</code> to only override
+      <code>createSettings()</code>, relying entirely on LSP4IJ for document lifecycle.
+      Diagnostics appear on initial load and on save, not on edit.</li>
+  <li><strong>Root cause:</strong> LSP4IJ 0.19.3 routes editor changes through
+      <code>PsiDocumentManager.performForCommittedDocument()</code>. For the TextMate-backed
+      Nextflow file type this can leave <code>textDocument/didChange</code> unsent until save,
+      while the Nextflow LS itself handles <code>didChange</code> correctly.</li>
+  <li><strong>Fix:</strong> Added <code>NextflowRealtimeDiagnostics</code>, a debounced JetBrains
+      document listener registered at project startup. It sends full-document
+      <code>textDocument/didChange</code> notifications for <code>.nf</code>, <code>.nf.test</code>,
+      and <code>nextflow.config</code> edits using the current unsaved editor text and a null
+      version so it does not fight LSP4IJ&rsquo;s internal version counter.</li>
+  <li><strong>Status:</strong> Fixed and manually verified. Checklist item 2.2 now passes:
+      after editing <code>FASTQC</code> to <code>FASTQX</code>, diagnostics appear without saving.</li>
+</ul>
+
+<h3>Bug: Error Reporting Mode Toggle Has No Effect</h3>
+<p><strong>Symptom:</strong> Changing Settings &rarr; Nextflow &rarr; Error Reporting from
+&ldquo;Warnings&rdquo; to &ldquo;Off&rdquo; and clicking Apply does not remove existing
+squiggles.</p>
+<p><strong>Investigation:</strong></p>
+<ul>
+  <li><strong>Latest result:</strong> Turning error checking off still has no visible effect.
+      Existing squiggles remain after changing the setting to Off and applying the settings.</li>
+  <li><code>NextflowLspConfigurationNotifier.notifyChanged()</code> sends
+      <code>workspace/didChangeConfiguration</code> with our flat settings map
+      (<code>nextflow.errorReportingMode: "off"</code>).</li>
+  <li><code>NextflowLanguageClient.createSettings()</code> now returns the same flat settings
+      as a <code>JsonObject</code>, enabling LSP4IJ&rsquo;s <code>CALL_DID_CHANGE_CONFIGURATION</code>
+      and <code>workspace/configuration</code> pull support.</li>
+  <li><strong>Possible causes:</strong>
+    <ol>
+      <li>The Nextflow LS may expect the <em>nested</em> settings format
+          (<code>{"nextflow":{"errorReportingMode":"off"}}</code>) for
+          <code>didChangeConfiguration</code>, not the flat format
+          (<code>{"nextflow.errorReportingMode":"off"}</code>).</li>
+      <li>The LS may pull settings via <code>workspace/configuration</code> with a specific
+          section name (e.g., <code>"nextflow"</code>) and our <code>createSettings()</code> returns
+          the flat map at the root level, so <code>findSettings("nextflow")</code> returns
+          nothing.</li>
+      <li>The LS may require a server restart to apply error-reporting changes.</li>
+    </ol>
+  </li>
+  <li><strong>Next step:</strong> Fix the settings notification and diagnostic refresh path:
+      verify the exact <code>didChangeConfiguration</code> payload received by the LS, send the
+      format the LS consumes, and force LSP4IJ diagnostics to clear/reload when the mode changes.</li>
+</ul>
+
+<h3>Code Changes Made During Phase 2</h3>
+<ul>
+  <li><strong>New file:</strong> <code>NextflowLanguageClient.kt</code> &mdash; custom
+      <code>LanguageClientImpl</code> that overrides <code>createSettings()</code> to return
+      Nextflow settings as a <code>JsonObject</code>. All manual LSP notifications
+      (workspace folders, didOpen, didChangeConfiguration) were removed after testing
+      showed they interfered with LSP4IJ&rsquo;s document lifecycle.</li>
+  <li><strong>Modified:</strong> <code>NextflowLanguageServerFactory.kt</code> &mdash; overrides
+      <code>createLanguageClient()</code> to return the custom client.</li>
+  <li><strong>New file:</strong> <code>NextflowRealtimeDiagnostics.kt</code> &mdash; bridges unsaved
+      Nextflow document edits to full-text <code>textDocument/didChange</code> notifications so
+      diagnostics update without Ctrl+S.</li>
+  <li><strong>Modified:</strong> <code>NextflowStartupActivity.kt</code> &mdash; installs the
+      real-time diagnostics bridge per project.</li>
 </ul>
 </section>
 
