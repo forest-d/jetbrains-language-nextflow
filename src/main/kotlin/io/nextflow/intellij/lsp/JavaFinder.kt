@@ -10,12 +10,22 @@ object JavaFinder {
 
     /**
      * Find a Java executable suitable for running the language server.
-     * Search order: JAVA_HOME env → PATH.
+     * Search order: plugin setting → JAVA_HOME env → PATH.
      */
-    fun findJava(): String? {
+    fun findJava(configuredJavaHome: String? = null): String? {
         val executable = if (System.getProperty("os.name").lowercase().contains("win")) "java.exe" else "java"
 
-        // 1. Check JAVA_HOME
+        // 1. Check plugin setting
+        if (!configuredJavaHome.isNullOrBlank()) {
+            val javaPath = Path.of(configuredJavaHome, "bin", executable).toString()
+            if (File(javaPath).isFile) {
+                LOG.info("Found Java via Nextflow settings: $javaPath")
+                return javaPath
+            }
+            LOG.warn("Nextflow Java home is set to $configuredJavaHome but $javaPath does not exist")
+        }
+
+        // 2. Check JAVA_HOME
         val javaHome = System.getenv("JAVA_HOME")
         if (!javaHome.isNullOrBlank()) {
             val javaPath = Path.of(javaHome, "bin", executable).toString()
@@ -26,7 +36,7 @@ object JavaFinder {
             LOG.warn("JAVA_HOME is set to $javaHome but $javaPath does not exist")
         }
 
-        // 2. Check PATH
+        // 3. Check PATH
         val pathEnv = System.getenv("PATH") ?: return null
         for (dir in pathEnv.split(File.pathSeparator)) {
             val javaPath = Path.of(dir, executable).toString()

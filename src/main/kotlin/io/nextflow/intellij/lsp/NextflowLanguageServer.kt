@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.redhat.devtools.lsp4ij.server.CannotStartProcessException
 import com.redhat.devtools.lsp4ij.server.ProcessStreamConnectionProvider
+import io.nextflow.intellij.settings.NextflowSettings
 
 class NextflowLanguageServer(private val project: Project) : ProcessStreamConnectionProvider() {
 
@@ -12,7 +13,8 @@ class NextflowLanguageServer(private val project: Project) : ProcessStreamConnec
     }
 
     init {
-        val javaPath = JavaFinder.findJava()
+        val settings = NextflowSettings.getInstance().state
+        val javaPath = JavaFinder.findJava(settings.javaHome)
             ?: throw CannotStartProcessException(
                 "Java not found. Install Java 17+ and ensure JAVA_HOME is set or java is on PATH."
             )
@@ -23,7 +25,7 @@ class NextflowLanguageServer(private val project: Project) : ProcessStreamConnec
             )
         }
 
-        val serverJar = LanguageServerDownloader.getOrDownload()
+        val serverJar = LanguageServerDownloader.getOrDownload(settings.languageServerVersion.versionPrefix)
             ?: throw CannotStartProcessException(
                 "Nextflow language server JAR not available. Check your internet connection or download it manually."
             )
@@ -36,12 +38,6 @@ class NextflowLanguageServer(private val project: Project) : ProcessStreamConnec
     }
 
     override fun getInitializationOptions(rootUri: com.intellij.openapi.vfs.VirtualFile?): Any {
-        return mapOf(
-            "nextflow" to mapOf(
-                "files" to mapOf(
-                    "exclude" to listOf(".git", ".nf-test", "work")
-                )
-            )
-        )
+        return NextflowSettings.getInstance().toLspSettings()
     }
 }

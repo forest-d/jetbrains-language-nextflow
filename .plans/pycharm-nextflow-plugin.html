@@ -6,7 +6,7 @@
 <meta name="feature" content="pycharm-nextflow-plugin">
 <meta name="status" content="in-progress">
 <meta name="created" content="2026-05-10">
-<meta name="updated" content="2026-05-10">
+<meta name="updated" content="2026-05-11">
 <style>
   body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
          line-height: 1.6; }
@@ -14,6 +14,8 @@
   .step { padding: 0.25rem 0; }
   .step::before { content: "\2610"; margin-right: 0.5rem; }
   .step.done::before { content: "\2611"; }
+  .step.skipped::before { content: "\2298"; }
+  .step.skipped { color: #666; }
 </style>
 </head>
 <body>
@@ -128,16 +130,16 @@ JAR — mirroring what the VS Code extension does in fetchLanguageServer.ts.</p>
 <p>Wire up all LSP-powered features through LSP4IJ and expose plugin settings
 matching the VS Code extension's configuration.</p>
 
-<div class="step" data-status="pending">Verify code completion works and configure maxItems setting (default: 100)</div>
-<div class="step" data-status="pending">Verify diagnostics/error reporting and configure error reporting mode (off, errors, warnings, paranoid)</div>
-<div class="step" data-status="pending">Verify go-to-definition, find references, and rename work through LSP4IJ</div>
-<div class="step" data-status="pending">Verify hover information displays correctly</div>
-<div class="step" data-status="pending">Verify document formatting works and configure formatting settings (harshilAlignment, maheshForm, sortDeclarations)</div>
-<div class="step" data-status="pending">Create a settings page (Configurable) under Languages &amp; Frameworks → Nextflow with all settings</div>
-<div class="step" data-status="pending">Implement settings persistence using PropertiesComponent or PersistentStateComponent</div>
-<div class="step" data-status="pending">Wire settings changes to LSP workspace/didChangeConfiguration notifications</div>
-<div class="step" data-status="pending">Add a "files.exclude" setting to control which directories the language server skips (default: .git, .nf-test, work)</div>
-<div class="step" data-status="pending">Add a "languageVersion" setting to select language server version (26.04, 25.10, 25.04, 24.10)</div>
+<div class="step done" data-status="done">Verify code completion works and configure maxItems setting (default: 100)</div>
+<div class="step done" data-status="done">Verify diagnostics/error reporting and configure error reporting mode (off, errors, warnings, paranoid)</div>
+<div class="step done" data-status="done">Verify go-to-definition, find references, and rename work through LSP4IJ</div>
+<div class="step done" data-status="done">Verify hover information displays correctly</div>
+<div class="step done" data-status="done">Verify document formatting works and configure formatting settings (harshilAlignment, maheshForm, sortDeclarations)</div>
+<div class="step done" data-status="done">Create a settings page (Configurable) under Languages &amp; Frameworks → Nextflow with all settings</div>
+<div class="step done" data-status="done">Implement settings persistence using PropertiesComponent or PersistentStateComponent</div>
+<div class="step done" data-status="done">Wire settings changes to LSP workspace/didChangeConfiguration notifications</div>
+<div class="step done" data-status="done">Add a "files.exclude" setting to control which directories the language server skips (default: .git, .nf-test, work)</div>
+<div class="step done" data-status="done">Add a "languageVersion" setting to select language server version (26.04, 25.10, 25.04, 24.10)</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -147,13 +149,13 @@ matching the VS Code extension's configuration.</p>
 <p>Build a tool window that shows the project's Nextflow structure: processes, workflows,
 functions, and tests — equivalent to the VS Code extension's Project View webview.</p>
 
-<div class="step" data-status="pending">Create a tool window factory (NextflowProjectToolWindowFactory) registered in plugin.xml</div>
-<div class="step" data-status="pending">Implement a tree model that queries the language server for workspace symbols (textDocument/documentSymbol or workspace/symbol)</div>
-<div class="step" data-status="pending">Display processes, workflows, functions, records, and enums in a hierarchical tree</div>
-<div class="step" data-status="pending">Add click-to-navigate: clicking a tree node opens the file at the symbol's location</div>
-<div class="step" data-status="pending">Add tree node icons for each symbol type (process, workflow, function, etc.)</div>
-<div class="step" data-status="pending">Implement auto-refresh when files change (listen to VFS events or LSP notifications)</div>
-<div class="step" data-status="pending">Verify the tool window works correctly in sandbox IDE</div>
+<div class="step done" data-status="done">Create a tool window factory (NextflowProjectToolWindowFactory) registered in plugin.xml</div>
+<div class="step done" data-status="done">Implement a tree model that queries the language server for workspace symbols (textDocument/documentSymbol or workspace/symbol)</div>
+<div class="step done" data-status="done">Display processes, workflows, functions, records, and enums in a hierarchical tree</div>
+<div class="step done" data-status="done">Add click-to-navigate: clicking a tree node opens the file at the symbol's location</div>
+<div class="step done" data-status="done">Add tree node icons for each symbol type (process, workflow, function, etc.)</div>
+<div class="step done" data-status="done">Implement auto-refresh when files change (listen to VFS events or LSP notifications)</div>
+<div class="step done" data-status="done">Verify the tool window works correctly in sandbox IDE</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -163,31 +165,33 @@ functions, and tests — equivalent to the VS Code extension's Project View webv
 <p>Implement a workflow DAG (directed acyclic graph) visualization, equivalent to the
 VS Code extension's Mermaid-based preview.</p>
 
-<div class="step" data-status="pending">Research how the VS Code extension generates DAG data (check if the language server provides DAG info or if the extension builds it)</div>
-<div class="step" data-status="pending">Create a DAG preview action accessible from the editor gutter or context menu</div>
-<div class="step" data-status="pending">Implement DAG rendering using JCEF (embedded Chromium) with Mermaid.js — or a native Swing graph if JCEF is unavailable</div>
-<div class="step" data-status="pending">Display the DAG in an editor tab or split view</div>
-<div class="step" data-status="pending">Add click-to-navigate from DAG nodes back to source code</div>
-<div class="step" data-status="pending">Implement auto-refresh when the workflow definition changes</div>
+<div class="step done" data-status="done">Research how the VS Code extension generates DAG data (check if the language server provides DAG info or if the extension builds it)</div>
+<div class="step done" data-status="done">Create a DAG preview action accessible from the editor gutter or context menu</div>
+<div class="step done" data-status="done">Implement DAG rendering using JCEF (embedded Chromium) with Mermaid.js — or a native Swing graph if JCEF is unavailable</div>
+<div class="step done" data-status="done">Display the DAG in an editor tab or split view</div>
+<div class="step done" data-status="done">Add click-to-navigate from DAG nodes back to source code</div>
+<div class="step done" data-status="done">Implement auto-refresh when the workflow definition changes</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 
 <section class="phase" id="phase-7">
-<h2>Phase 7: Seqera Cloud Integration</h2>
+<h2>Phase 7: Seqera Cloud Integration — Permanently Skipped</h2>
 <p>Implement Seqera Cloud authentication and workspace management — equivalent to the
 VS Code extension's Seqera Cloud webview panel.</p>
 
-<div class="step" data-status="pending">Implement OAuth authentication flow with Seqera Cloud (Auth0 provider at cloud.seqera.io)</div>
-<div class="step" data-status="pending">Store authentication tokens securely using IntelliJ's CredentialStore / PasswordSafe API</div>
-<div class="step" data-status="pending">Implement JWT token validation and refresh logic</div>
-<div class="step" data-status="pending">Create a Seqera Cloud tool window with login/workspace UI</div>
-<div class="step" data-status="pending">Implement workspace selector (organization + workspace dropdown)</div>
-<div class="step" data-status="pending">Implement pipeline browser: list, view details, launch pipelines</div>
-<div class="step" data-status="pending">Implement run history viewer</div>
-<div class="step" data-status="pending">Implement dataset browser</div>
-<div class="step" data-status="pending">Implement compute environment viewer</div>
-<div class="step" data-status="pending">Add "Add Pipeline" action to deploy a pipeline to Seqera Cloud from the IDE</div>
+<p><strong>Status:</strong> Permanently skipped. This plugin intentionally excludes Seqera support.</p>
+
+<div class="step skipped" data-status="skipped">Implement OAuth authentication flow with Seqera Cloud (Auth0 provider at cloud.seqera.io)</div>
+<div class="step skipped" data-status="skipped">Store authentication tokens securely using IntelliJ's CredentialStore / PasswordSafe API</div>
+<div class="step skipped" data-status="skipped">Implement JWT token validation and refresh logic</div>
+<div class="step skipped" data-status="skipped">Create a Seqera Cloud tool window with login/workspace UI</div>
+<div class="step skipped" data-status="skipped">Implement workspace selector (organization + workspace dropdown)</div>
+<div class="step skipped" data-status="skipped">Implement pipeline browser: list, view details, launch pipelines</div>
+<div class="step skipped" data-status="skipped">Implement run history viewer</div>
+<div class="step skipped" data-status="skipped">Implement dataset browser</div>
+<div class="step skipped" data-status="skipped">Implement compute environment viewer</div>
+<div class="step skipped" data-status="skipped">Add "Add Pipeline" action to deploy a pipeline to Seqera Cloud from the IDE</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -222,8 +226,8 @@ VS Code extension's Seqera Cloud webview panel.</p>
       lexer/parser — IntelliJ supports TextMate bundles natively and this avoids duplicating effort.</li>
   <li><strong>Share the JAR cache</strong> at ~/.nextflow/lsp/ with the VS Code extension so users who
       have both IDEs don't download the server twice.</li>
-  <li><strong>Seqera Cloud integration is Phase 7</strong> — it's valuable but not core to the language
-      editing experience. Phases 1-4 deliver the essential editing features.</li>
+  <li><strong>Seqera Cloud integration is skipped</strong> — this plugin intentionally focuses on local
+      language editing, project navigation, DAG previews, and distribution polish.</li>
   <li><strong>Starting point</strong> is a fresh IntelliJ IDEA Kotlin project — IDE generates Gradle
       wrapper, settings.gradle.kts, and basic project structure.</li>
 </ul>
@@ -254,6 +258,32 @@ VS Code extension's Seqera Cloud webview panel.</p>
   <li><strong>Startup activity</strong> pre-downloads the LS JAR in background on project open so it's ready when the first .nf file is opened.</li>
   <li>Latest LS release: <strong>v26.04.0</strong> (<code>language-server-all.jar</code>, ~15MB).</li>
 </ul>
+<p><strong>2026-05-11:</strong> Phase 4 complete. Implementation notes:</p>
+<ul>
+  <li><strong>Settings persistence</strong> uses an application-level <code>PersistentStateComponent</code> stored in <code>nextflow.xml</code>.</li>
+  <li><strong>Settings UI</strong> is registered under Languages &amp; Frameworks → Nextflow and covers Java home, LS version, completion limit, diagnostics mode, excludes, and formatter toggles.</li>
+  <li><strong>LSP initialization</strong> now reads all settings from <code>NextflowSettings</code>, including configured Java home and language server version prefix.</li>
+  <li><strong>Configuration changes</strong> send <code>workspace/didChangeConfiguration</code> to running servers; Java home and language server version changes restart the server.</li>
+  <li><strong>Verification</strong>: <code>./gradlew build</code> passes with <code>JAVA_HOME=/home/forest/.local/jdk</code>.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 5 complete. Implementation notes:</p>
+<ul>
+  <li><strong>Tool window</strong> registered as <code>Nextflow</code> with <code>NextflowProjectToolWindowFactory</code>.</li>
+  <li><strong>Project tree</strong> queries the running language server with <code>workspace/symbol</code> and groups symbols into processes, workflows, functions, records, enums, and other symbols.</li>
+  <li><strong>Navigation</strong> opens the symbol location on double-click using <code>OpenFileDescriptor</code>.</li>
+  <li><strong>Refresh</strong> is available from the toolbar and automatically debounced after VFS changes to <code>.nf</code>, <code>.nf.test</code>, or <code>nextflow.config</code> files.</li>
+  <li><strong>Verification</strong>: <code>./gradlew build</code> passes with <code>JAVA_HOME=/home/forest/.local/jdk</code>.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 6 complete. Implementation notes:</p>
+<ul>
+  <li><strong>DAG source</strong> comes from the Nextflow language server's <code>Preview DAG</code> code lens and <code>nextflow.server.previewDag</code> workspace command.</li>
+  <li><strong>Preview action</strong> is available in the editor context menu for <code>.nf</code> and <code>.nf.test</code> files.</li>
+  <li><strong>Rendering</strong> opens a custom editor tab backed by JCEF and Mermaid.js, with a plain Mermaid source fallback when JCEF is unavailable.</li>
+  <li><strong>Navigation</strong> lets users click rendered Mermaid labels; the plugin resolves matching workspace symbols and opens the source location.</li>
+  <li><strong>Refresh</strong> is available from the preview toolbar and auto-runs after the source file changes.</li>
+  <li><strong>Verification</strong>: <code>./gradlew build</code> passes with <code>JAVA_HOME=/home/forest/.local/jdk</code>.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 7 permanently skipped. Seqera Cloud support is intentionally out of scope for this plugin.</p>
 </section>
 
 </body>

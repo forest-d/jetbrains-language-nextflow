@@ -17,6 +17,25 @@
         <postStartupActivity
                 implementation="io.nextflow.intellij.NextflowStartupActivity"/>
 
+        <applicationConfigurable
+                parentId="language"
+                instance="io.nextflow.intellij.settings.NextflowSettingsConfigurable"
+                id="preferences.nextflow"
+                displayName="Nextflow"/>
+
+        <toolWindow
+                id="Nextflow"
+                anchor="left"
+                icon="/icons/nextflow.svg"
+                factoryClass="io.nextflow.intellij.project.NextflowProjectToolWindowFactory"/>
+
+        <fileEditorProvider
+                implementation="io.nextflow.intellij.dag.NextflowDagPreviewEditorProvider"/>
+
+        <notificationGroup
+                id="Nextflow"
+                displayType="BALLOON"/>
+
         <!-- TextMate grammar bundle -->
         <textmate.bundleProvider
                 implementation="io.nextflow.intellij.NextflowTextMateBundleProvider"/>
@@ -57,4 +76,13 @@
                          serverId="io.nextflow.languageServer"
                          languageId="nextflow-config"/>
     </extensions>
+
+    <actions>
+        <action id="io.nextflow.intellij.previewDag"
+                class="io.nextflow.intellij.dag.NextflowDagPreviewAction"
+                text="Preview Nextflow DAG"
+                description="Generate a Mermaid DAG preview for the selected Nextflow workflow">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
