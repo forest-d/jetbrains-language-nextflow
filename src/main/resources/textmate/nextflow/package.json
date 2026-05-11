@@ -1,5 +1,7 @@
 {
   "name": "nextflow",
+  "license": "MIT",
+  "upstream": "https://github.com/nextflow-io/vscode-language-nextflow",
   "contributes": {
     "languages": [
       {

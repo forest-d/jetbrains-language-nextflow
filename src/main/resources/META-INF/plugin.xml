@@ -1,12 +1,17 @@
 <idea-plugin>
     <id>io.nextflow.jetbrains</id>
     <name>Nextflow</name>
-    <vendor url="https://nextflow.io">Nextflow</vendor>
+    <vendor url="https://github.com/forest-d">Forest Dussault</vendor>
 
     <description><![CDATA[
         <p>Nextflow language support for JetBrains IDEs.</p>
-        <p>Provides syntax highlighting, code completion, diagnostics, navigation,
-        and more — powered by the Nextflow Language Server.</p>
+        <ul>
+            <li>Syntax highlighting for .nf, .nf.test, and nextflow.config files</li>
+            <li>Code completion, diagnostics, hover, go-to-definition, references, rename, and formatting</li>
+            <li>Workflow DAG preview</li>
+            <li>Project structure view for processes, workflows, and functions</li>
+        </ul>
+        <p>Powered by the <a href="https://github.com/nextflow-io/language-server">Nextflow Language Server</a>.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
