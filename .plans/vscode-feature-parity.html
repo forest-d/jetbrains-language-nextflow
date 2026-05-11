@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VS Code Feature Parity Testing &amp; Gap Closure</title>
+<meta name="feature" content="vscode-feature-parity">
+<meta name="status" content="in-progress">
+<meta name="created" content="2026-05-11">
+<meta name="updated" content="2026-05-11">
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+         line-height: 1.6; }
+  .phase { margin: 1.5rem 0; }
+  .step { padding: 0.25rem 0; }
+  .step::before { content: "\2610"; margin-right: 0.5rem; }
+  .step.done::before { content: "\2611"; }
+  .step.skipped::before { content: "\2298"; }
+  .step.skipped { color: #666; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; }
+  th { background: #f5f5f5; }
+  .gap { background: #fff3e0; }
+  .parity { background: #e8f5e9; }
+  .na { background: #f5f5f5; color: #666; }
+</style>
+</head>
+<body>
+
+<h1>VS Code Feature Parity Testing &amp; Gap Closure</h1>
+
+<section id="context">
+<h2>Context</h2>
+<p>The JetBrains Nextflow plugin (built in the
+<a href="pycharm-nextflow-plugin.html">pycharm-nextflow-plugin</a> plan) needs systematic
+verification against the
+<a href="https://docs.seqera.io/nextflow/vscode">VS Code Nextflow extension</a>
+(<a href="https://marketplace.visualstudio.com/items?itemName=nextflow.nextflow">Marketplace</a>)
+to confirm feature parity and close remaining gaps.</p>
+
+<h3>Scope</h3>
+<ul>
+  <li><strong>In scope:</strong> all language-editing, navigation, visualization, and
+      configuration features from the VS Code extension.</li>
+  <li><strong>Out of scope:</strong> AI/Copilot features, Seqera Cloud integration, telemetry,
+      type conversion commands (deferred).</li>
+</ul>
+
+<h3>Feature Matrix</h3>
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>VS Code</th>
+    <th>JetBrains</th>
+    <th>Status</th>
+  </tr>
+  <tr class="parity">
+    <td>Syntax highlighting (.nf, .nf.test, nextflow.config)</td>
+    <td>TextMate grammars</td>
+    <td>Same TextMate grammars via bundleProvider</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Diagnostics &amp; error reporting</td>
+    <td>LSP + configurable mode</td>
+    <td>LSP + ErrorReportingMode enum</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Hover information</td>
+    <td>LSP</td>
+    <td>LSP via LSP4IJ</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Code completion</td>
+    <td>LSP + extended + maxItems</td>
+    <td>LSP + both settings exposed</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Code navigation (go-to-def, references)</td>
+    <td>LSP</td>
+    <td>LSP via LSP4IJ</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Symbol renaming</td>
+    <td>LSP</td>
+    <td>LSP via LSP4IJ</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Formatting (harshil, mahesh, sort)</td>
+    <td>LSP + 3 options</td>
+    <td>LSP + same 3 options</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>DAG preview</td>
+    <td>Mermaid via webview</td>
+    <td>Mermaid via JCEF</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Project view (symbol list)</td>
+    <td>List view (alphabetical by type)</td>
+    <td>Categorized tree (processes, workflows, etc.)</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="gap">
+    <td>Project view (call hierarchy tree)</td>
+    <td>Tree view by call hierarchy</td>
+    <td>Not implemented</td>
+    <td><strong>Gap</strong></td>
+  </tr>
+  <tr class="parity">
+    <td>Status bar (LS state)</td>
+    <td>Status bar item</td>
+    <td>NextflowStatusBarWidget</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="gap">
+    <td>Code snippets (process, workflow templates)</td>
+    <td>Built-in snippets</td>
+    <td>None</td>
+    <td><strong>Gap</strong></td>
+  </tr>
+  <tr class="gap">
+    <td>Static type checking setting</td>
+    <td>nextflow.typeChecking option</td>
+    <td>Not exposed</td>
+    <td><strong>Gap</strong></td>
+  </tr>
+  <tr class="parity">
+    <td>Parameter schema support (nextflow_schema.json)</td>
+    <td>LSP-driven</td>
+    <td>LSP-driven (same server)</td>
+    <td>Parity (LSP)</td>
+  </tr>
+  <tr class="parity">
+    <td>Plugin/extension support (Gradle plugin defs)</td>
+    <td>LSP-driven (v25.10+)</td>
+    <td>LSP-driven (same server)</td>
+    <td>Parity (LSP)</td>
+  </tr>
+  <tr class="parity">
+    <td>LS version management &amp; auto-download</td>
+    <td>Custom downloader</td>
+    <td>LanguageServerDownloader</td>
+    <td>Parity &mdash; verify</td>
+  </tr>
+  <tr class="parity">
+    <td>Java runtime detection</td>
+    <td>setting &rarr; JAVA_HOME &rarr; PATH</td>
+    <td>setting &rarr; JAVA_HOME &rarr; IDE JRE &rarr; PATH</td>
+    <td>Parity</td>
+  </tr>
+  <tr class="na">
+    <td>AI / Copilot integration</td>
+    <td>GitHub Copilot</td>
+    <td>N/A</td>
+    <td>Excluded</td>
+  </tr>
+  <tr class="na">
+    <td>Telemetry</td>
+    <td>Opt-in PostHog</td>
+    <td>N/A</td>
+    <td>Excluded</td>
+  </tr>
+  <tr class="na">
+    <td>Type conversion commands</td>
+    <td>Command Palette actions</td>
+    <td>N/A</td>
+    <td>Deferred</td>
+  </tr>
+</table>
+
+<h3>Settings Comparison</h3>
+<table>
+  <tr><th>VS Code Setting</th><th>JetBrains Equivalent</th><th>Status</th></tr>
+  <tr class="parity"><td>nextflow.java.home</td><td>javaHome</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.languageVersion</td><td>languageServerVersion</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.completion.extended</td><td>completionExtended</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.completion.maxItems</td><td>completionMaxItems</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.debug</td><td>debug</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.errorReportingMode</td><td>errorReportingMode</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.files.exclude</td><td>filesExclude</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.formatting.harshilAlignment</td><td>harshilAlignment</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.formatting.maheshForm</td><td>maheshForm</td><td>Parity</td></tr>
+  <tr class="parity"><td>nextflow.formatting.sortDeclarations</td><td>sortDeclarations</td><td>Parity</td></tr>
+  <tr class="gap"><td>nextflow.typeChecking</td><td>&mdash;</td><td><strong>Gap</strong></td></tr>
+  <tr class="na"><td>nextflow.telemetry.enabled</td><td>&mdash;</td><td>Excluded</td></tr>
+</table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section class="phase" id="phase-1">
+<h2>Phase 1: Test Fixtures &amp; Verification Infrastructure</h2>
+<p>Create a comprehensive set of Nextflow sample files that exercise every language feature,
+plus a structured manual test checklist and any automated test additions.</p>
+
+<div class="step done" data-status="done">Create a test fixture project at <code>src/test/resources/fixtures/parity/</code> with a <code>nextflow.config</code> that defines params, profiles, and process directives</div>
+<div class="step done" data-status="done">Create <code>main.nf</code> fixture with: multiple processes (with typed and untyped inputs/outputs), workflows calling processes, channel operations (map, filter, collect, mix), function definitions, and conditional logic</div>
+<div class="step done" data-status="done">Create <code>modules/sample_module.nf</code> fixture with a process and workflow to test cross-file navigation and extended completion</div>
+<div class="step done" data-status="done">Create <code>nextflow_schema.json</code> fixture to test parameter schema hover/completion support</div>
+<div class="step done" data-status="done">Create a <code>PARITY_CHECKLIST.md</code> in <code>.plans/</code> with a structured manual test script: for each feature, list the exact steps to perform, expected result, and a pass/fail column</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section class="phase" id="phase-2">
+<h2>Phase 2: Verify Existing Feature Parity</h2>
+<p>Run through each LSP-backed and UI feature against the test fixtures, documenting
+results. Fix any regressions or gaps found during verification.</p>
+
+<div class="step" data-status="pending">Syntax highlighting: open each fixture file type (.nf, .nf.test, nextflow.config) and visually verify keyword, string, comment, and operator highlighting matches VS Code output</div>
+<div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes</div>
+<div class="step" data-status="pending">Hover: hover over process names, function calls, channel variables, and params; verify tooltip shows definition and any Javadoc; compare content with VS Code hover output</div>
+<div class="step" data-status="pending">Code completion: trigger completion inside a workflow body for process names, channel methods, and params; verify extended completion surfaces symbols from modules/sample_module.nf when enabled</div>
+<div class="step" data-status="pending">Code navigation: Ctrl+click on a process call to verify go-to-definition; use Find Usages on a process name to verify find-references; test cross-file navigation to modules/</div>
+<div class="step" data-status="pending">Symbol renaming: rename a process and verify all call sites update; rename a channel variable and verify downstream references update</div>
+<div class="step" data-status="pending">Formatting: reformat main.nf with each formatter option toggled independently (harshil, mahesh, sort) and verify output matches VS Code formatting for the same options</div>
+<div class="step" data-status="pending">DAG preview: open DAG for a workflow with multiple processes; verify Mermaid renders correctly, node click navigates to source, and the diagram updates on file edit</div>
+<div class="step" data-status="pending">Project view: verify the Nextflow tool window lists all processes, workflows, and functions from all fixture files; verify double-click navigates to definition</div>
+<div class="step" data-status="pending">Status bar: verify the widget shows correct states during startup, while idle, and after stopping the server</div>
+<div class="step" data-status="pending">Settings persistence: change each setting, restart IDE, verify values are preserved and sent to LSP server</div>
+<div class="step" data-status="pending">Document results in the parity checklist with pass/fail and notes on any discrepancies</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section class="phase" id="phase-3">
+<h2>Phase 3: Code Snippets (Live Templates)</h2>
+<p>Add IntelliJ Live Templates for common Nextflow constructs, matching or exceeding
+the VS Code extension's built-in snippets.</p>
+
+<div class="step" data-status="pending">Research VS Code extension's snippet definitions (check the language server or extension source for snippet content)</div>
+<div class="step" data-status="pending">Create a Live Template group "Nextflow" registered via plugin.xml</div>
+<div class="step" data-status="pending">Add <code>process</code> snippet: expands to a full process block with input/output/script sections and cursor placeholders</div>
+<div class="step" data-status="pending">Add <code>workflow</code> snippet: expands to a workflow block with take/main/emit sections</div>
+<div class="step" data-status="pending">Add <code>channel</code> snippet: common channel factory patterns (Channel.of, Channel.fromPath, Channel.fromFilePairs)</div>
+<div class="step" data-status="pending">Add additional snippets for: function definition, conditional process execution (when clause), publishDir directive, container directive</div>
+<div class="step" data-status="pending">Set template applicability context to Nextflow file types only</div>
+<div class="step" data-status="pending">Verify snippets expand correctly in the IDE with tab stops and placeholders working</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section class="phase" id="phase-4">
+<h2>Phase 4: Missing Settings &amp; Configuration</h2>
+<p>Add the <code>typeChecking</code> setting and ensure all settings are correctly propagated
+to the language server.</p>
+
+<div class="step" data-status="pending">Research the <code>nextflow.typeChecking</code> setting: determine what values the language server accepts (boolean? enum?) by checking the LS source or VS Code extension package.json</div>
+<div class="step" data-status="pending">Add <code>typeChecking</code> field to <code>NextflowSettings.State</code> with appropriate type and default</div>
+<div class="step" data-status="pending">Add the type checking UI control to <code>NextflowSettingsConfigurable</code></div>
+<div class="step" data-status="pending">Wire the new setting into <code>toLspSettings()</code> and <code>toFlatLspSettings()</code></div>
+<div class="step" data-status="pending">Add a test to <code>NextflowSettingsTest</code> verifying the new setting serializes correctly</div>
+<div class="step" data-status="pending">Verify in IDE: enable type checking, introduce a type error, confirm the LSP reports it</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section class="phase" id="phase-5">
+<h2>Phase 5: Project View Enhancement</h2>
+<p>Add a hierarchical call-tree mode to the Nextflow tool window, matching
+the VS Code extension's tree view that organizes processes and workflows by
+call hierarchy.</p>
+
+<div class="step" data-status="pending">Research how the VS Code extension builds its call hierarchy tree (likely using the LSP <code>callHierarchy</code> requests or walking code lenses)</div>
+<div class="step" data-status="pending">Add a toggle button to the project view toolbar to switch between flat (current) and tree (hierarchy) modes</div>
+<div class="step" data-status="pending">Implement the tree mode: for each workflow, show the processes and sub-workflows it calls as children</div>
+<div class="step" data-status="pending">Preserve navigation behavior (double-click opens definition) in tree mode</div>
+<div class="step" data-status="pending">Verify the tree view reflects the actual call structure of the test fixtures and matches VS Code's tree view</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section class="phase" id="phase-6">
+<h2>Phase 6: Final Parity Audit &amp; Regression Tests</h2>
+<p>Perform a side-by-side comparison of every feature between the VS Code extension
+and our JetBrains plugin. Add automated regression tests where feasible.</p>
+
+<div class="step" data-status="pending">Open the same test project in both VS Code (with Nextflow extension) and JetBrains IDE (with our plugin) side by side</div>
+<div class="step" data-status="pending">Walk through every item in the parity checklist; screenshot any remaining discrepancies</div>
+<div class="step" data-status="pending">Add automated tests for snippet expansion (verify template XML parses and context is set correctly)</div>
+<div class="step" data-status="pending">Add automated tests for settings completeness (verify all VS Code settings have JetBrains equivalents in <code>toFlatLspSettings()</code>)</div>
+<div class="step" data-status="pending">Update the feature matrix in this plan with final pass/fail results</div>
+<div class="step" data-status="pending">Document any intentional divergences (features we do better or differently) in the Notes section</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<section id="notes">
+<h2>Notes</h2>
+<p><strong>2026-05-11:</strong> Plan created. Key decisions:</p>
+<ul>
+  <li><strong>Type conversion commands deferred</strong> &mdash; the VS Code extension offers
+      "Convert to static types" via Command Palette, but this is a lower-priority feature
+      that can be added later.</li>
+  <li><strong>Seqera/AI/telemetry excluded</strong> &mdash; these are intentionally out of scope
+      for this plugin.</li>
+  <li><strong>Test fixture approach</strong> &mdash; a single comprehensive Nextflow project that
+      exercises all features is more useful than many tiny isolated files, because it also
+      tests cross-file navigation and extended completion.</li>
+  <li><strong>Live Templates over LSP snippets</strong> &mdash; IntelliJ's Live Template system is
+      richer than VS Code snippets (supports Groovy expressions, surround templates, etc.)
+      and is the idiomatic JetBrains approach. Users can also customize them in
+      Settings &rarr; Editor &rarr; Live Templates.</li>
+  <li><strong>Project view hierarchy</strong> &mdash; the VS Code extension's tree view is a
+      differentiating feature; it may require call hierarchy LSP support or walking the
+      DAG structure. Research needed in Phase 5.</li>
+</ul>
+</section>
+
+</body>
+</html>
