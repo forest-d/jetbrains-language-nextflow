@@ -69,7 +69,7 @@ object NextflowDagPreviewService {
                 }
                 .exceptionally { error ->
                     LOG.warn("Failed to preview Nextflow DAG", error)
-                    notify(project, "Unable to generate DAG preview: ${error.message ?: "unknown error"}", NotificationType.ERROR)
+                    notify(project, "Unable to generate DAG preview: ${error.rootMessage()}", NotificationType.ERROR)
                     null
                 }
         }.exceptionally { error ->
@@ -190,7 +190,11 @@ object NextflowDagPreviewService {
         val arguments = command.arguments.orEmpty()
         return server.workspaceService
             .executeCommand(ExecuteCommandParams(commandId, arguments))
-            .thenApply { DagPreviewResult(it, commandId, arguments) }
+            .thenApply {
+                val result = DagPreviewResult(it, commandId, arguments)
+                result.throwIfError()
+                result
+            }
     }
 
     private fun CodeLens.isPreviewDagLens(): Boolean {
@@ -243,6 +247,14 @@ object NextflowDagPreviewService {
             "codeLensProvider=$codeLensProvider, " +
             "executeCommandProvider=$executeCommandProvider"
     }
+
+    private fun Throwable.rootMessage(): String {
+        var current: Throwable = this
+        while (current.cause != null) {
+            current = current.cause!!
+        }
+        return current.message ?: "unknown error"
+    }
 }
 
 private data class NamedLocation(val name: String, val location: Location)
@@ -253,11 +265,29 @@ data class DagPreviewResult(
     val command: String,
     val arguments: List<Any>,
 ) {
-    fun toMermaid(): String = when (payload) {
-        null -> ""
-        is String -> payload
-        is Map<*, *> -> (payload["mermaid"] ?: payload["diagram"] ?: payload["result"] ?: payload["value"] ?: payload).toString()
-        else -> payload.toString()
+    fun throwIfError() {
+        errorMessage()?.let { throw IllegalStateException(it) }
+    }
+
+    fun errorMessage(): String? = when (payload) {
+        is Map<*, *> -> payload["error"]?.toString()
+            ?: (payload["result"] as? Map<*, *>)?.get("error")?.toString()
+            ?: (payload["value"] as? Map<*, *>)?.get("error")?.toString()
+        else -> null
+    }
+
+    fun toMermaid(): String {
+        throwIfError()
+        return when (payload) {
+            is String -> payload
+            is Map<*, *> -> {
+                val mermaid = payload["mermaid"] ?: payload["diagram"] ?: payload["result"] ?: payload["value"]
+                mermaid as? String
+                    ?: throw IllegalStateException("DAG preview command did not return Mermaid text.")
+            }
+            null -> throw IllegalStateException("DAG preview command returned no Mermaid text.")
+            else -> throw IllegalStateException("DAG preview command returned unsupported payload type: ${payload.javaClass.name}.")
+        }
     }
 }
 

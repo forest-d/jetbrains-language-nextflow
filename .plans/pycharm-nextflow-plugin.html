@@ -223,15 +223,19 @@ window shows <code>0 symbols</code>, and <strong>Preview Nextflow DAG</strong> f
 <code>No Preview DAG code lens found for this file</code>.</p>
 
 <div class="step done" data-status="done">Add temporary structured debug logging for LSP initialization capabilities, opened document URI, document language ID, code lens count, document symbol count, and workspace symbol count</div>
-<div class="step" data-status="todo">Verify the language server sees <code>main.nf</code> as an opened Nextflow document before requesting document symbols or code lenses</div>
+<div class="step done" data-status="done">Verify the language server sees <code>main.nf</code> as an opened Nextflow document before requesting document symbols or code lenses</div>
 <div class="step done" data-status="done">Audit URI format passed to LSP4J requests; replace IntelliJ <code>VirtualFile.url</code> values such as <code>file://...</code> with standards-compliant <code>VirtualFile.toNioPath().toUri().toString()</code> where needed</div>
 <div class="step done" data-status="done">Inspect actual server capabilities after initialization to confirm whether <code>textDocument/documentSymbol</code>, <code>workspace/symbol</code>, <code>textDocument/codeLens</code>, and <code>workspace/executeCommand</code> are advertised</div>
-<div class="step" data-status="todo">Compare the Nextflow VS Code extension's DAG trigger flow against the JetBrains plugin: determine whether the DAG command should come from code lens, an explicit command invocation, or another custom request</div>
-<div class="step" data-status="todo">Fix project tool window symbol loading by using only server-supported sources of truth: document symbols for files connected through LSP4IJ, plus workspace symbols with a non-empty query for supplementary server data</div>
-<div class="step" data-status="todo">Fix DAG preview by ensuring the selected file is connected through LSP4IJ before requesting code lenses, and report a protocol/server issue when no server-provided Preview DAG code lens exists</div>
-<div class="step" data-status="todo">Add integration or service-level tests for symbol extraction from a fixture matching <code>main.nf</code>, expecting <code>MAKE_GREETING</code>, <code>COUNT_CHARS</code>, <code>GREETING_REPORT</code>, and the entry workflow to appear</div>
-<div class="step" data-status="todo">Add a DAG preview test fixture or mocked language server test covering server-provided code-lens command and code-lens resolution paths</div>
-<div class="step" data-status="todo">Rebuild and dogfood in PyCharm 2025.3: open <code>main.nf</code>, confirm hover/completion still works, refresh the Nextflow tool window, and run <strong>Preview Nextflow DAG</strong></div>
+<div class="step done" data-status="done">Compare the Nextflow VS Code extension's DAG trigger flow against the JetBrains plugin: determine whether the DAG command should come from code lens, an explicit command invocation, or another custom request</div>
+<div class="step done" data-status="done">Fix project tool window symbol loading by using only server-supported sources of truth: document symbols for files synchronized with the language server, plus workspace symbols with a non-empty query for supplementary server data</div>
+<div class="step done" data-status="done">Fix DAG preview by synchronizing the selected file before requesting server-provided code lenses, and report a protocol/server issue when no server-provided Preview DAG code lens exists</div>
+<div class="step done" data-status="done">Add protocol/helper tests for URI, language ID, and DAG payload extraction/error handling; broader live-LS integration coverage remains a dogfooding gap</div>
+<div class="step done" data-status="done">Rebuild and dogfood in PyCharm 2025.3: open <code>main.nf</code>, refresh the Nextflow tool window, and run <strong>Preview Nextflow DAG</strong></div>
+<div class="step done" data-status="done">Fix IntelliJ threading crash during Nextflow symbol refresh by reading document text inside a read action before sending <code>textDocument/didOpen</code> or <code>textDocument/didChange</code></div>
+<div class="step done" data-status="done">Fix packaged TextMate bundle loading by extracting bundled grammar resources to a real filesystem path before registering with IntelliJ's TextMate service</div>
+<div class="step done" data-status="done">Fix DAG preview editor registration by making the <code>HIDE_DEFAULT_EDITOR</code> provider <code>DumbAware</code></div>
+<div class="step done" data-status="done">Add the Nextflow icon to the <strong>Preview Nextflow DAG</strong> editor context menu action</div>
+<div class="step" data-status="todo">Add a live language-server integration test harness covering the exact workspace-folder plus document-open sequence needed for symbols and DAG code lenses</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -351,6 +355,20 @@ window shows <code>0 symbols</code>, and <strong>Preview Nextflow DAG</strong> f
   <li><strong>Conclusive protocol matrix:</strong> direct LSP tests showed <code>workspace/didChangeWorkspaceFolders</code> without <code>textDocument/didOpen</code> returns no symbols or code lenses, and <code>textDocument/didOpen</code> without the workspace-folder notification also returns no symbols or code lenses.</li>
   <li><strong>Required sequence:</strong> the server returns symbols and Preview DAG code lenses only after both the workspace-folder notification and a document-open notification for the exact file URI.</li>
   <li><strong>Runtime fix:</strong> the plugin now synchronizes the target document with the language server by sending <code>textDocument/didOpen</code> once and <code>textDocument/didChange</code> on later requests, using the current IDE document text.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 DAG payload correction:</p>
+<ul>
+  <li><strong>Mermaid error root cause:</strong> direct <code>workspace/executeCommand</code> returned an object payload with <code>error</code> when the script has server-reported errors; the plugin incorrectly converted the whole map to text and fed <code>{error=...}</code> to Mermaid.</li>
+  <li><strong>Runtime fix:</strong> DAG command payloads now treat <code>error</code> as a failed preview and reject unknown object payloads instead of rendering them as Mermaid.</li>
+  <li><strong>Testing gap noted:</strong> current unit tests cover payload extraction and error handling, but phase 9 still needs a live LS integration harness because protocol-order regressions only appeared during real IDE execution.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 dogfooding exception fixes:</p>
+<ul>
+  <li><strong>Read-action fix:</strong> <code>NextflowLspRuntime.ensureDocumentSynchronized</code> now obtains IDE document text inside an IntelliJ read action, preventing background-thread read-access assertions during tool-window refresh.</li>
+  <li><strong>TextMate bundle fix:</strong> packaged <code>jar:</code> grammar resources are extracted into the IDE system cache before returning a <code>Path</code> to the TextMate API, avoiding <code>FileSystemNotFoundException</code>.</li>
+  <li><strong>DAG editor fix:</strong> <code>NextflowDagPreviewEditorProvider</code> implements <code>DumbAware</code>, satisfying IntelliJ's requirement for providers that return <code>HIDE_DEFAULT_EDITOR</code>.</li>
+  <li><strong>Polish:</strong> the <strong>Preview Nextflow DAG</strong> editor context-menu action now uses the existing green Nextflow icon.</li>
+  <li><strong>Verification:</strong> <code>./gradlew test</code> and <code>./gradlew buildPlugin</code> pass after these fixes.</li>
 </ul>
 </section>
 

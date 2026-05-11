@@ -1,5 +1,6 @@
 package io.nextflow.intellij.lsp
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
@@ -50,7 +51,9 @@ object NextflowLspRuntime {
     fun ensureDocumentSynchronized(server: LanguageServer, file: VirtualFile): CompletableFuture<Void> {
         return CompletableFuture.runAsync {
             val uri = file.toLspUriString()
-            val text = FileDocumentManager.getInstance().getDocument(file)?.text ?: VfsUtilCore.loadText(file)
+            val text = ApplicationManager.getApplication().runReadAction<String> {
+                FileDocumentManager.getInstance().getDocument(file)?.text ?: VfsUtilCore.loadText(file)
+            }
             val documents = synchronized(synchronizedDocuments) {
                 synchronizedDocuments.getOrPut(server) { mutableMapOf() }
             }

@@ -85,7 +85,8 @@
         <action id="io.nextflow.intellij.previewDag"
                 class="io.nextflow.intellij.dag.NextflowDagPreviewAction"
                 text="Preview Nextflow DAG"
-                description="Generate a Mermaid DAG preview for the selected Nextflow workflow">
+                description="Generate a Mermaid DAG preview for the selected Nextflow workflow"
+                icon="/icons/nextflow.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>

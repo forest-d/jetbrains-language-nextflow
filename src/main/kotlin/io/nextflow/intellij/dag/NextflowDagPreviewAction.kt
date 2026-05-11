@@ -3,8 +3,9 @@ package io.nextflow.intellij.dag
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import io.nextflow.intellij.NextflowIcons
 
-class NextflowDagPreviewAction : AnAction() {
+class NextflowDagPreviewAction : AnAction(NextflowIcons.NEXTFLOW) {
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
         val file = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
