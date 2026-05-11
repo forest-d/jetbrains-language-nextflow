@@ -10,16 +10,22 @@ object JavaFinder {
 
     /**
      * Find a Java executable suitable for running the language server.
-     * Search order: plugin setting → JAVA_HOME env → PATH.
+     * Search order: plugin setting → JAVA_HOME env → IDE runtime → PATH.
      */
     fun findJava(configuredJavaHome: String? = null): String? {
-        return findJava(configuredJavaHome, System.getenv(), System.getProperty("os.name"))
+        return findJava(
+            configuredJavaHome,
+            System.getenv(),
+            System.getProperty("os.name"),
+            System.getProperty("java.home"),
+        )
     }
 
     internal fun findJava(
         configuredJavaHome: String? = null,
         environment: Map<String, String>,
         osName: String,
+        currentJavaHome: String? = null,
     ): String? {
         val executable = if (osName.lowercase().contains("win")) "java.exe" else "java"
 
@@ -44,7 +50,17 @@ object JavaFinder {
             LOG.warn("JAVA_HOME is set to $javaHome but $javaPath does not exist")
         }
 
-        // 3. Check PATH
+        // 3. Check the IDE's own runtime. Desktop-launched IDEs often do not inherit shell env vars.
+        if (!currentJavaHome.isNullOrBlank()) {
+            val javaPath = Path.of(currentJavaHome, "bin", executable).toString()
+            if (File(javaPath).isFile) {
+                LOG.info("Found Java via IDE runtime: $javaPath")
+                return javaPath
+            }
+            LOG.warn("IDE runtime is set to $currentJavaHome but $javaPath does not exist")
+        }
+
+        // 4. Check PATH
         val pathEnv = environment["PATH"] ?: return null
         for (dir in pathEnv.split(File.pathSeparator)) {
             val javaPath = Path.of(dir, executable).toString()

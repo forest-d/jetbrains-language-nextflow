@@ -13,7 +13,8 @@ Nextflow language support for IntelliJ IDEA, PyCharm, and other JetBrains IDEs â
 
 ## Requirements
 
-- JetBrains IDE **2024.3** or later
+- JetBrains IDE **2024.3** or later. The plugin descriptor intentionally leaves
+  `until-build` unset so private builds can be installed in newer IDE releases.
 - **Java 17+** installed and available via `JAVA_HOME` or `PATH`
 - [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij) plugin (installed automatically as a dependency)
 

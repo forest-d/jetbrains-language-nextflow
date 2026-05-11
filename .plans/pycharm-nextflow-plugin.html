@@ -238,6 +238,7 @@ Marketplace publishing is deferred until after internal dogfooding.</p>
   <li><strong><code>instrumentationTools()</code></strong> was removed in plugin 2.16.0 — no longer needed in the dependencies block.</li>
   <li><strong>Repository config</strong> moved from settings.gradle.kts to build.gradle.kts — the <code>intellijPlatform { defaultRepositories() }</code> DSL inside <code>dependencyResolutionManagement</code> didn't resolve with the settings plugin alone.</li>
   <li><strong>Startup activity</strong> uses <code>ProjectActivity</code> (coroutine-based) — the modern replacement for the deprecated <code>StartupActivity</code>.</li>
+  <li><strong>IDE compatibility</strong> keeps <code>since-build</code> at <code>243</code> but leaves <code>until-build</code> unset so local/private builds can install on newer IDE releases such as build <code>253</code>.</li>
   <li><strong>JDK 21</strong> installed locally at <code>~/.local/jdk</code> (Adoptium Temurin 21.0.11).</li>
   <li>Plugin builds to <code>build/distributions/jetbrains-language-nextflow-0.1.0.zip</code>.</li>
 </ul>

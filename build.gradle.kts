@@ -55,7 +55,7 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild = providers.gradleProperty("platformSinceBuild").get()
-            untilBuild = providers.gradleProperty("platformUntilBuild").get()
+            untilBuild = provider { null }
         }
 
         vendor {
