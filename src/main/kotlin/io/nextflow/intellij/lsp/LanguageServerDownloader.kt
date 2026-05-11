@@ -16,13 +16,20 @@ object LanguageServerDownloader {
     private const val GITHUB_RELEASES_URL = "https://api.github.com/repos/nextflow-io/language-server/releases"
     private const val DOWNLOAD_BASE_URL = "https://github.com/nextflow-io/language-server/releases/download"
     private const val JAR_NAME = "language-server-all.jar"
+    private const val CACHE_ROOT_PROPERTY = "nextflow.lsp.cacheRoot"
     const val DEFAULT_VERSION_PREFIX = "v26.04"
 
     /**
      * Get the cache directory: ~/.nextflow/lsp/{versionPrefix}/
      */
-    private fun getCacheDir(versionPrefix: String): Path {
-        return Path.of(System.getProperty("user.home"), ".nextflow", "lsp", versionPrefix)
+    internal fun getCacheDir(versionPrefix: String): Path {
+        val configuredRoot = System.getProperty(CACHE_ROOT_PROPERTY)
+        val root = if (configuredRoot.isNullOrBlank()) {
+            Path.of(System.getProperty("user.home"), ".nextflow", "lsp")
+        } else {
+            Path.of(configuredRoot)
+        }
+        return root.resolve(versionPrefix)
     }
 
     /**
@@ -35,10 +42,26 @@ object LanguageServerDownloader {
         return Files.list(cacheDir).use { stream ->
             stream
                 .filter { it.fileName.toString().endsWith(".jar") }
-                .sorted(Comparator.reverseOrder())
+                .sorted { left, right -> compareJarVersions(right, left) }
                 .findFirst()
                 .orElse(null)
         }
+    }
+
+    internal fun compareJarVersions(left: Path, right: Path): Int {
+        return compareVersionTags(left.fileName.toString().removeSuffix(".jar"), right.fileName.toString().removeSuffix(".jar"))
+    }
+
+    internal fun compareVersionTags(left: String, right: String): Int {
+        val leftParts = left.trimStart('v').split('.', '-').map { it.toIntOrNull() ?: 0 }
+        val rightParts = right.trimStart('v').split('.', '-').map { it.toIntOrNull() ?: 0 }
+        val size = maxOf(leftParts.size, rightParts.size)
+        for (index in 0 until size) {
+            val leftPart = leftParts.getOrElse(index) { 0 }
+            val rightPart = rightParts.getOrElse(index) { 0 }
+            if (leftPart != rightPart) return leftPart.compareTo(rightPart)
+        }
+        return left.compareTo(right)
     }
 
     /**

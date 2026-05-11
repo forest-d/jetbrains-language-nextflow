@@ -198,18 +198,19 @@ VS Code extension's Seqera Cloud webview panel.</p>
 
 <section class="phase" id="phase-8">
 <h2>Phase 8: Testing, Polish &amp; Distribution</h2>
-<p>Harden the plugin with tests, polish UX, and prepare for JetBrains Marketplace distribution.</p>
+<p>Harden the plugin with tests, polish UX, and prepare for private distribution.
+Marketplace publishing is deferred until after internal dogfooding.</p>
 
-<div class="step" data-status="pending">Write unit tests for language server management (download, caching, version selection)</div>
-<div class="step" data-status="pending">Write unit tests for Java runtime detection</div>
-<div class="step" data-status="pending">Write unit tests for settings persistence and change notification</div>
-<div class="step" data-status="pending">Write integration tests using IntelliJ's test framework (LightPlatformCodeInsightTestCase or similar)</div>
-<div class="step" data-status="pending">Add error notifications for common failures: Java not found, language server download failed, server crashed</div>
-<div class="step" data-status="pending">Add a "Nextflow" entry to the status bar showing language server status (starting, running, error)</div>
-<div class="step" data-status="pending">Create plugin icon and screenshots for Marketplace listing</div>
-<div class="step" data-status="pending">Write plugin description and changelog for Marketplace</div>
-<div class="step" data-status="pending">Run Plugin Verifier (<code>./gradlew verifyPlugin</code>) against target IDE versions</div>
-<div class="step" data-status="pending">Publish to JetBrains Marketplace (or prepare for private distribution)</div>
+<div class="step done" data-status="done">Write unit tests for language server management (download, caching, version selection)</div>
+<div class="step done" data-status="done">Write unit tests for Java runtime detection</div>
+<div class="step done" data-status="done">Write unit tests for settings persistence and change notification</div>
+<div class="step done" data-status="done">Write integration tests using IntelliJ's test framework (LightPlatformCodeInsightTestCase or similar)</div>
+<div class="step done" data-status="done">Add error notifications for common failures: Java not found, language server download failed, server crashed</div>
+<div class="step done" data-status="done">Add a "Nextflow" entry to the status bar showing language server status (starting, running, error)</div>
+<div class="step done" data-status="done">Create plugin icon and screenshot checklist for future Marketplace listing</div>
+<div class="step done" data-status="done">Write plugin description and changelog for private distribution</div>
+<div class="step done" data-status="done">Run Plugin Verifier (<code>./gradlew verifyPlugin</code>) against target IDE versions</div>
+<div class="step done" data-status="done">Prepare private distribution; defer JetBrains Marketplace publishing</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -284,6 +285,16 @@ VS Code extension's Seqera Cloud webview panel.</p>
   <li><strong>Verification</strong>: <code>./gradlew build</code> passes with <code>JAVA_HOME=/home/forest/.local/jdk</code>.</li>
 </ul>
 <p><strong>2026-05-11:</strong> Phase 7 permanently skipped. Seqera Cloud support is intentionally out of scope for this plugin.</p>
+<p><strong>2026-05-11:</strong> Phase 8 complete for private distribution. Implementation notes:</p>
+<ul>
+  <li><strong>Tests</strong> cover Java version parsing, language server cache version selection, settings-to-LSP configuration, DAG result extraction, and platform file type registration.</li>
+  <li><strong>Runtime polish</strong> adds Nextflow notifications for Java/server availability failures and a status bar widget for language-server state.</li>
+  <li><strong>Distribution metadata</strong> includes plugin icons, <code>CHANGELOG.md</code>, README updates, screenshot checklist, and private installation notes.</li>
+  <li><strong>Plugin ID</strong> changed to <code>io.nextflow.jetbrains</code> so Plugin Verifier accepts the descriptor.</li>
+  <li><strong>Verification</strong>: <code>./gradlew test</code>, <code>./gradlew build</code>, and <code>./gradlew buildPlugin verifyPlugin</code> pass with <code>JAVA_HOME=/home/forest/.local/jdk</code>.</li>
+  <li><strong>Verifier residuals</strong>: compatible with IC-243.28141.41; reports deprecated LSP4J/IntelliJ APIs, experimental LSP4IJ APIs, and non-dynamic TextMate registration, all acceptable for private dogfooding.</li>
+  <li><strong>Marketplace publishing</strong> intentionally deferred until after substantial internal dogfooding.</li>
+</ul>
 </section>
 
 </body>

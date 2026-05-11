@@ -3,6 +3,7 @@ package io.nextflow.intellij
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import io.nextflow.intellij.NextflowNotifications
 import io.nextflow.intellij.lsp.LanguageServerDownloader
 import io.nextflow.intellij.settings.NextflowSettings
 
@@ -17,6 +18,10 @@ class NextflowStartupActivity : ProjectActivity {
                 LOG.info("Language server ready: $path")
             } else {
                 LOG.warn("Language server not available")
+                NextflowNotifications.warn(
+                    project,
+                    "Nextflow language server is not available. Check your network connection or cached language server version."
+                )
             }
         }
     }

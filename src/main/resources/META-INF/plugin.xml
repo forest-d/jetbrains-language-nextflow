@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>io.nextflow.intellij</id>
+    <id>io.nextflow.jetbrains</id>
     <name>Nextflow</name>
     <vendor url="https://nextflow.io">Nextflow</vendor>
 
@@ -35,6 +35,10 @@
         <notificationGroup
                 id="Nextflow"
                 displayType="BALLOON"/>
+
+        <statusBarWidgetFactory
+                id="NextflowStatus"
+                implementation="io.nextflow.intellij.NextflowStatusBarWidgetFactory"/>
 
         <!-- TextMate grammar bundle -->
         <textmate.bundleProvider

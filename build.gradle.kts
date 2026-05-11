@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
@@ -19,6 +21,9 @@ repositories {
 }
 
 dependencies {
+    testImplementation(kotlin("test"))
+    testImplementation("junit:junit:4.13.2")
+
     intellijPlatform {
         intellijIdeaCommunity(providers.gradleProperty("platformVersion").get())
 
@@ -26,14 +31,20 @@ dependencies {
 
         plugin("com.redhat.devtools.lsp4ij", "0.19.3")
 
+        testFramework(TestFrameworkType.Platform)
+
         pluginVerifier()
         zipSigner()
     }
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 intellijPlatform {
     pluginConfiguration {
-        id = "io.nextflow.intellij"
+        id = "io.nextflow.jetbrains"
         name = "Nextflow"
         version = project.version.toString()
         description = """

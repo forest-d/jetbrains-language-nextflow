@@ -13,7 +13,15 @@ object JavaFinder {
      * Search order: plugin setting → JAVA_HOME env → PATH.
      */
     fun findJava(configuredJavaHome: String? = null): String? {
-        val executable = if (System.getProperty("os.name").lowercase().contains("win")) "java.exe" else "java"
+        return findJava(configuredJavaHome, System.getenv(), System.getProperty("os.name"))
+    }
+
+    internal fun findJava(
+        configuredJavaHome: String? = null,
+        environment: Map<String, String>,
+        osName: String,
+    ): String? {
+        val executable = if (osName.lowercase().contains("win")) "java.exe" else "java"
 
         // 1. Check plugin setting
         if (!configuredJavaHome.isNullOrBlank()) {
@@ -26,7 +34,7 @@ object JavaFinder {
         }
 
         // 2. Check JAVA_HOME
-        val javaHome = System.getenv("JAVA_HOME")
+        val javaHome = environment["JAVA_HOME"]
         if (!javaHome.isNullOrBlank()) {
             val javaPath = Path.of(javaHome, "bin", executable).toString()
             if (File(javaPath).isFile) {
@@ -37,7 +45,7 @@ object JavaFinder {
         }
 
         // 3. Check PATH
-        val pathEnv = System.getenv("PATH") ?: return null
+        val pathEnv = environment["PATH"] ?: return null
         for (dir in pathEnv.split(File.pathSeparator)) {
             val javaPath = Path.of(dir, executable).toString()
             if (File(javaPath).isFile) {
@@ -61,8 +69,7 @@ object JavaFinder {
             val output = process.inputStream.bufferedReader().readText()
             process.waitFor()
 
-            val match = Regex("""version "(\d+)""").find(output)
-            val majorVersion = match?.groupValues?.get(1)?.toIntOrNull()
+            val majorVersion = parseMajorVersion(output)
             if (majorVersion == null) {
                 LOG.warn("Could not parse Java version from: $output")
                 false
@@ -75,5 +82,15 @@ object JavaFinder {
             LOG.warn("Failed to check Java version: ${e.message}")
             false
         }
+    }
+
+    internal fun parseMajorVersion(versionOutput: String): Int? {
+        val legacy = Regex("""version "1\.(\d+)""").find(versionOutput)
+        if (legacy != null) {
+            return legacy.groupValues[1].toIntOrNull()
+        }
+
+        val modern = Regex("""version "(\d+)""").find(versionOutput)
+        return modern?.groupValues?.get(1)?.toIntOrNull()
     }
 }

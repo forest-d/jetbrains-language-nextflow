@@ -7,6 +7,8 @@ Nextflow language support for IntelliJ IDEA, PyCharm, and other JetBrains IDEs â
 - **Syntax highlighting** for `.nf`, `.nf.test`, and `nextflow.config` files (via TextMate grammars from the [VS Code extension](https://github.com/nextflow-io/vscode-language-nextflow))
 - **Code completion**, **diagnostics**, **hover**, **go-to-definition**, **references**, **rename**, and **formatting** (via the Nextflow Language Server)
 - **Automatic language server management** â€” downloads and caches the server JAR from GitHub releases
+- **Project structure view** for processes, workflows, functions, records, and enums
+- **DAG preview** for workflows using the language server's Mermaid output
 - Works with **all JetBrains IDEs** (IntelliJ IDEA, PyCharm, WebStorm, etc.)
 
 ## Requirements
@@ -17,7 +19,29 @@ Nextflow language support for IntelliJ IDEA, PyCharm, and other JetBrains IDEs â
 
 ## Installation
 
-> **Coming soon** â€” the plugin is not yet published to the JetBrains Marketplace.
+This plugin is currently distributed privately for internal dogfooding. Build the plugin zip and install it from disk via **Settings > Plugins > Install Plugin from Disk**.
+
+See [private distribution notes](docs/distribution/private-distribution.md).
+
+## Local Testing in PyCharm
+
+1. Build the plugin zip:
+
+   ```bash
+   JAVA_HOME=/home/forest/.local/jdk PATH=/home/forest/.local/jdk/bin:/usr/bin:/bin ./gradlew buildPlugin
+   ```
+
+2. In PyCharm, open **Settings > Plugins**.
+3. Click the gear icon, choose **Install Plugin from Disk...**, and select:
+
+   ```text
+   build/distributions/jetbrains-language-nextflow-0.1.0.zip
+   ```
+
+4. Restart PyCharm when prompted.
+5. Open a project with `.nf`, `.nf.test`, or `nextflow.config` files.
+6. Check **Settings > Languages & Frameworks > Nextflow** if you need to set Java home or the language server version.
+7. Open a Nextflow file and verify highlighting, completion, diagnostics, the **Nextflow** tool window, and **Preview Nextflow DAG** from the editor context menu.
 
 ## Building from Source
 

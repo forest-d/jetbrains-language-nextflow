@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.redhat.devtools.lsp4ij.server.CannotStartProcessException
 import com.redhat.devtools.lsp4ij.server.ProcessStreamConnectionProvider
+import io.nextflow.intellij.NextflowNotifications
 import io.nextflow.intellij.settings.NextflowSettings
 
 class NextflowLanguageServer(private val project: Project) : ProcessStreamConnectionProvider() {
@@ -15,20 +16,24 @@ class NextflowLanguageServer(private val project: Project) : ProcessStreamConnec
     init {
         val settings = NextflowSettings.getInstance().state
         val javaPath = JavaFinder.findJava(settings.javaHome)
-            ?: throw CannotStartProcessException(
-                "Java not found. Install Java 17+ and ensure JAVA_HOME is set or java is on PATH."
-            )
+        if (javaPath == null) {
+            val message = "Java not found. Install Java 17+ and ensure JAVA_HOME is set or java is on PATH."
+            NextflowNotifications.error(project, message)
+            throw CannotStartProcessException(message)
+        }
 
         if (!JavaFinder.checkVersion(javaPath)) {
-            throw CannotStartProcessException(
-                "Java 17 or later is required to run the Nextflow language server (found: $javaPath)."
-            )
+            val message = "Java 17 or later is required to run the Nextflow language server (found: $javaPath)."
+            NextflowNotifications.error(project, message)
+            throw CannotStartProcessException(message)
         }
 
         val serverJar = LanguageServerDownloader.getOrDownload(settings.languageServerVersion.versionPrefix)
-            ?: throw CannotStartProcessException(
-                "Nextflow language server JAR not available. Check your internet connection or download it manually."
-            )
+        if (serverJar == null) {
+            val message = "Nextflow language server JAR not available. Check your internet connection or download it manually."
+            NextflowNotifications.error(project, message)
+            throw CannotStartProcessException(message)
+        }
 
         val commands = listOf(javaPath, "-jar", serverJar.toString())
         LOG.info("Starting Nextflow language server: ${commands.joinToString(" ")}")
