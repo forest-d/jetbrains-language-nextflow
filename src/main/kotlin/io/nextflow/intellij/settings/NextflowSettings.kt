@@ -50,8 +50,30 @@ class NextflowSettings : PersistentStateComponent<NextflowSettings.State> {
     }
 
     fun toLspSettings(): Map<String, Any> {
+        return mapOf("nextflow" to toNestedLspSettings())
+    }
+
+    fun toFlatLspSettings(): Map<String, Any> {
         val excludes = state.filesExclude.map { it.trim() }.filter { it.isNotEmpty() }
-        val nextflowSettings = mapOf(
+        return mapOf(
+            "nextflow.completion.extended" to state.completionExtended,
+            "nextflow.completion.maxItems" to state.completionMaxItems,
+            "nextflow.dag.direction" to "TB",
+            "nextflow.dag.verbose" to false,
+            "nextflow.debug" to state.debug,
+            "nextflow.errorReportingMode" to state.errorReportingMode.lspValue,
+            "nextflow.files.exclude" to excludes,
+            "nextflow.formatting.harshilAlignment" to state.harshilAlignment,
+            "nextflow.formatting.maheshForm" to state.maheshForm,
+            "nextflow.formatting.sortDeclarations" to state.sortDeclarations,
+            "nextflow.languageVersion" to state.languageServerVersion.versionPrefix,
+            "nextflow.targetVersion" to state.languageServerVersion.versionPrefix,
+        )
+    }
+
+    private fun toNestedLspSettings(): Map<String, Any?> {
+        val excludes = state.filesExclude.map { it.trim() }.filter { it.isNotEmpty() }
+        return mapOf(
             "completion" to mapOf(
                 "extended" to state.completionExtended,
                 "maxItems" to state.completionMaxItems,
@@ -75,8 +97,6 @@ class NextflowSettings : PersistentStateComponent<NextflowSettings.State> {
             "maxCompletionItems" to state.completionMaxItems,
             "sortDeclarations" to state.sortDeclarations,
         )
-
-        return mapOf("nextflow" to nextflowSettings)
     }
 
     companion object {

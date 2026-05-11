@@ -10,11 +10,15 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.redhat.devtools.lsp4ij.LanguageServerManager
+import io.nextflow.intellij.lsp.NextflowLspRuntime
+import io.nextflow.intellij.lsp.nextflowLanguageId
+import io.nextflow.intellij.lsp.toLspUriString
 import org.eclipse.lsp4j.CodeLens
 import org.eclipse.lsp4j.CodeLensParams
 import org.eclipse.lsp4j.Command
 import org.eclipse.lsp4j.ExecuteCommandParams
 import org.eclipse.lsp4j.Location
+import org.eclipse.lsp4j.ServerCapabilities
 import org.eclipse.lsp4j.SymbolInformation
 import org.eclipse.lsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceSymbol
@@ -23,11 +27,15 @@ import org.eclipse.lsp4j.services.LanguageServer
 import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 object NextflowDagPreviewService {
     private const val SERVER_ID = "io.nextflow.languageServer"
     private const val PREVIEW_DAG_COMMAND = "nextflow.server.previewDag"
+    private const val PREVIEW_DAG_CODE_LENS_COMMAND = "nextflow.previewDag"
+    private const val CODE_LENS_ATTEMPTS = 8
+    private const val CODE_LENS_RETRY_DELAY_MS = 250L
     private val LOG = Logger.getInstance(NextflowDagPreviewService::class.java)
 
     fun preview(project: Project, sourceFile: VirtualFile, caretLine: Int) {
@@ -39,7 +47,19 @@ object NextflowDagPreviewService {
             }
 
             item.initializedServer
-                .thenCompose { server -> findDagCommand(server, sourceFile, caretLine).thenCompose { command -> executeDagCommand(server, command) } }
+                .thenCompose { server ->
+                    LOG.info("Nextflow LSP capabilities: ${item.serverCapabilities.toDebugSummary()}")
+                    LOG.info(
+                        "Nextflow LSP opened documents before DAG preview: " +
+                            item.serverWrapper.openedDocuments.joinToString(prefix = "[", postfix = "]") {
+                                item.serverWrapper.toUriString(it.file)
+                        }
+                    )
+                    NextflowLspRuntime.ensureWorkspaceInitialized(project, server)
+                        .thenCompose { NextflowLspRuntime.ensureDocumentSynchronized(server, sourceFile) }
+                        .thenCompose { findDagCommand(server, sourceFile, caretLine) }
+                }
+                .thenCompose { command -> executeDagCommand(command.server, command.command) }
                 .thenAccept { result ->
                     val mermaid = result.toMermaid()
                     ApplicationManager.getApplication().invokeLater {
@@ -111,29 +131,62 @@ object NextflowDagPreviewService {
         server: LanguageServer,
         sourceFile: VirtualFile,
         caretLine: Int,
-    ): CompletableFuture<Command> {
-        val params = CodeLensParams(TextDocumentIdentifier(sourceFile.url))
-        return server.textDocumentService.codeLens(params).thenCompose { lenses ->
-            val lens = lenses
-                .orEmpty()
-                .filter { it.isPreviewDagLens() }
-                .minByOrNull { abs((it.range?.start?.line ?: caretLine) - caretLine) }
-                ?: return@thenCompose CompletableFuture.failedFuture(
-                    IllegalStateException("No Preview DAG code lens found for this file.")
-                )
+    ): CompletableFuture<DagCommand> {
+        val uri = sourceFile.toLspUriString()
+        LOG.info("Nextflow LSP direct codeLens request file=${sourceFile.path} uri=$uri languageId=${sourceFile.nextflowLanguageId()}")
 
-            if (lens.command != null) {
-                CompletableFuture.completedFuture(lens.command)
-            } else {
-                server.textDocumentService.resolveCodeLens(lens).thenApply { resolved ->
-                    resolved.command ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.")
+        return requestCodeLenses(server, sourceFile, uri, attempt = 1)
+            .thenCompose { lenses ->
+                val lens = lenses
+                    .filter { it.isPreviewDagLens() }
+                    .minByOrNull { abs((it.range?.start?.line ?: caretLine) - caretLine) }
+                    ?: return@thenCompose CompletableFuture.failedFuture(
+                        IllegalStateException("Language server returned no Preview DAG code lens for $uri after $CODE_LENS_ATTEMPTS direct textDocument/codeLens requests.")
+                    )
+
+                val command = lens.command
+                if (command != null) {
+                    CompletableFuture.completedFuture(DagCommand(server, command))
+                } else {
+                    server.textDocumentService.resolveCodeLens(lens).thenApply { resolved ->
+                        DagCommand(
+                            server,
+                            resolved.command ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.")
+                        )
+                    }
                 }
             }
-        }
+    }
+
+    private fun requestCodeLenses(
+        server: LanguageServer,
+        sourceFile: VirtualFile,
+        uri: String,
+        attempt: Int,
+    ): CompletableFuture<List<CodeLens>> {
+        return server.textDocumentService
+            .codeLens(CodeLensParams(TextDocumentIdentifier(uri)))
+            .thenCompose { result ->
+                val lenses = result.orEmpty()
+                LOG.info(
+                    "Nextflow LSP direct codeLens response file=${sourceFile.path} " +
+                        "attempt=$attempt count=${lenses.size} commands=${lenses.map { it.command?.command to it.command?.arguments }}"
+                )
+                if (lenses.none { it.isPreviewDagLens() } && attempt < CODE_LENS_ATTEMPTS) {
+                    CompletableFuture
+                        .supplyAsync({ Unit }, CompletableFuture.delayedExecutor(CODE_LENS_RETRY_DELAY_MS, TimeUnit.MILLISECONDS))
+                        .thenCompose { requestCodeLenses(server, sourceFile, uri, attempt + 1) }
+                } else {
+                    CompletableFuture.completedFuture(lenses)
+                }
+            }
     }
 
     private fun executeDagCommand(server: LanguageServer, command: Command): CompletableFuture<DagPreviewResult> {
-        val commandId = command.command ?: PREVIEW_DAG_COMMAND
+        val commandId = when (command.command) {
+            PREVIEW_DAG_CODE_LENS_COMMAND, null -> PREVIEW_DAG_COMMAND
+            else -> command.command
+        }
         val arguments = command.arguments.orEmpty()
         return server.workspaceService
             .executeCommand(ExecuteCommandParams(commandId, arguments))
@@ -143,6 +196,7 @@ object NextflowDagPreviewService {
     private fun CodeLens.isPreviewDagLens(): Boolean {
         val command = command
         return command?.command == PREVIEW_DAG_COMMAND ||
+            command?.command == PREVIEW_DAG_CODE_LENS_COMMAND ||
             command?.title?.contains("Preview DAG", ignoreCase = true) == true
     }
 
@@ -181,9 +235,18 @@ object NextflowDagPreviewService {
             .replace(Regex("""\s+"""), " ")
             .trim()
     }
+
+    private fun ServerCapabilities?.toDebugSummary(): String {
+        if (this == null) return "unavailable"
+        return "documentSymbolProvider=$documentSymbolProvider, " +
+            "workspaceSymbolProvider=$workspaceSymbolProvider, " +
+            "codeLensProvider=$codeLensProvider, " +
+            "executeCommandProvider=$executeCommandProvider"
+    }
 }
 
 private data class NamedLocation(val name: String, val location: Location)
+private data class DagCommand(val server: LanguageServer, val command: Command)
 
 data class DagPreviewResult(
     val payload: Any?,
@@ -193,7 +256,7 @@ data class DagPreviewResult(
     fun toMermaid(): String = when (payload) {
         null -> ""
         is String -> payload
-        is Map<*, *> -> (payload["mermaid"] ?: payload["diagram"] ?: payload["value"] ?: payload).toString()
+        is Map<*, *> -> (payload["mermaid"] ?: payload["diagram"] ?: payload["result"] ?: payload["value"] ?: payload).toString()
         else -> payload.toString()
     }
 }

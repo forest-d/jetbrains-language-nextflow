@@ -215,6 +215,27 @@ Marketplace publishing is deferred until after internal dogfooding.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 
+<section class="phase" id="phase-9">
+<h2>Phase 9: Runtime LSP Feature Remediation</h2>
+<p>Fix dogfooding failures observed in PyCharm 2025.3 with
+<code>/home/forest/PycharmProjects/nextflow-extension-testing/main.nf</code>: the Nextflow tool
+window shows <code>0 symbols</code>, and <strong>Preview Nextflow DAG</strong> fails with
+<code>No Preview DAG code lens found for this file</code>.</p>
+
+<div class="step done" data-status="done">Add temporary structured debug logging for LSP initialization capabilities, opened document URI, document language ID, code lens count, document symbol count, and workspace symbol count</div>
+<div class="step" data-status="todo">Verify the language server sees <code>main.nf</code> as an opened Nextflow document before requesting document symbols or code lenses</div>
+<div class="step done" data-status="done">Audit URI format passed to LSP4J requests; replace IntelliJ <code>VirtualFile.url</code> values such as <code>file://...</code> with standards-compliant <code>VirtualFile.toNioPath().toUri().toString()</code> where needed</div>
+<div class="step done" data-status="done">Inspect actual server capabilities after initialization to confirm whether <code>textDocument/documentSymbol</code>, <code>workspace/symbol</code>, <code>textDocument/codeLens</code>, and <code>workspace/executeCommand</code> are advertised</div>
+<div class="step" data-status="todo">Compare the Nextflow VS Code extension's DAG trigger flow against the JetBrains plugin: determine whether the DAG command should come from code lens, an explicit command invocation, or another custom request</div>
+<div class="step" data-status="todo">Fix project tool window symbol loading by using only server-supported sources of truth: document symbols for files connected through LSP4IJ, plus workspace symbols with a non-empty query for supplementary server data</div>
+<div class="step" data-status="todo">Fix DAG preview by ensuring the selected file is connected through LSP4IJ before requesting code lenses, and report a protocol/server issue when no server-provided Preview DAG code lens exists</div>
+<div class="step" data-status="todo">Add integration or service-level tests for symbol extraction from a fixture matching <code>main.nf</code>, expecting <code>MAKE_GREETING</code>, <code>COUNT_CHARS</code>, <code>GREETING_REPORT</code>, and the entry workflow to appear</div>
+<div class="step" data-status="todo">Add a DAG preview test fixture or mocked language server test covering server-provided code-lens command and code-lens resolution paths</div>
+<div class="step" data-status="todo">Rebuild and dogfood in PyCharm 2025.3: open <code>main.nf</code>, confirm hover/completion still works, refresh the Nextflow tool window, and run <strong>Preview Nextflow DAG</strong></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
 <section id="notes">
 <h2>Notes</h2>
 <p><strong>2026-05-10:</strong> Plan created. Key decisions:</p>
@@ -295,6 +316,41 @@ Marketplace publishing is deferred until after internal dogfooding.</p>
   <li><strong>Verification</strong>: <code>./gradlew test</code>, <code>./gradlew build</code>, and <code>./gradlew buildPlugin verifyPlugin</code> pass with <code>JAVA_HOME=/home/forest/.local/jdk</code>.</li>
   <li><strong>Verifier residuals</strong>: compatible with IC-243.28141.41; reports deprecated LSP4J/IntelliJ APIs, experimental LSP4IJ APIs, and non-dynamic TextMate registration, all acceptable for private dogfooding.</li>
   <li><strong>Marketplace publishing</strong> intentionally deferred until after substantial internal dogfooding.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 opened after PyCharm 2025.3 dogfooding. Runtime issue notes:</p>
+<ul>
+  <li><strong>Observed file:</strong> <code>/home/forest/PycharmProjects/nextflow-extension-testing/main.nf</code>.</li>
+  <li><strong>Project view failure:</strong> Nextflow tool window refresh still reports <code>0 symbols</code> despite a file containing two processes and workflows.</li>
+  <li><strong>DAG failure:</strong> Preview action reports <code>No Preview DAG code lens found for this file</code>.</li>
+  <li><strong>Primary hypothesis:</strong> requests may be using the wrong document URI format or firing before the language server has opened/indexed the file; second hypothesis is that the Nextflow LS does not support empty <code>workspace/symbol</code> or DAG code lenses in this context.</li>
+  <li><strong>Fix direction:</strong> instrument first, then align symbol and DAG requests with the exact protocol flow used by the Nextflow VS Code extension and the capabilities advertised by the running server.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 implementation pass:</p>
+<ul>
+  <li><strong>No local parser fallback:</strong> project symbols and DAG previews remain LSP-backed only.</li>
+  <li><strong>URI fix:</strong> document requests now use <code>VirtualFile.toNioPath().toUri().toString()</code> via a shared helper, with tests for the generated URI and language IDs.</li>
+  <li><strong>LSP4IJ connection attempt:</strong> project symbols and DAG code lenses were routed through <code>LSPFileSupport</code> to test whether LSP4IJ file connection was the missing piece.</li>
+  <li><strong>Debug logs:</strong> symbol refresh and DAG preview now log server capabilities, opened documents, request URI, language ID, and response counts.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 follow-up after runtime still returned no symbols/code lenses:</p>
+<ul>
+  <li><strong>Root cause:</strong> reproduced against the cached <code>v26.04.0.jar</code>; the server does not populate its AST cache from <code>initialize</code> workspace folders alone. It starts returning document symbols and code lenses after receiving <code>workspace/didChangeWorkspaceFolders</code> for the project root.</li>
+  <li><strong>Runtime fix:</strong> added an LSP runtime handshake that sends flat Nextflow configuration and a workspace-folder-added notification before symbol and DAG requests.</li>
+  <li><strong>DAG command fix:</strong> server code lenses carry <code>nextflow.previewDag</code>, while <code>workspace/executeCommand</code> advertises <code>nextflow.server.previewDag</code>; the plugin now translates the code-lens command before execution.</li>
+  <li><strong>Manual verification:</strong> direct LSP repro for <code>main.nf</code> returns <code>process MAKE_GREETING</code>, <code>process COUNT_CHARS</code>, <code>workflow GREETING_REPORT</code>, <code>workflow &lt;entry&gt;</code>, and two Preview DAG code lenses after the workspace-folder notification.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 conclusive interaction fix:</p>
+<ul>
+  <li><strong>PyCharm evidence:</strong> IDE logs showed the workspace-folder notification was sent, while <code>LSPFileSupport</code> still reported no opened documents and returned empty symbol/code-lens data.</li>
+  <li><strong>Root cause in the plugin layer:</strong> <code>LSPFileSupport</code> can return an empty support result before a wrapper is connected to the file, so its empty response was not a reliable language-server response.</li>
+  <li><strong>Final request path:</strong> project symbols and DAG previews now call the initialized <code>LanguageServer</code> proxy directly after the workspace handshake, using <code>textDocument/documentSymbol</code> and <code>textDocument/codeLens</code> with the exact file URI that was proven in the standalone repro.</li>
+  <li><strong>No fallback:</strong> bounded retries repeat the same LSP requests while the server builds its AST/code-lens cache; they do not parse files locally or synthesize symbols.</li>
+</ul>
+<p><strong>2026-05-11:</strong> Phase 9 document synchronization correction:</p>
+<ul>
+  <li><strong>Conclusive protocol matrix:</strong> direct LSP tests showed <code>workspace/didChangeWorkspaceFolders</code> without <code>textDocument/didOpen</code> returns no symbols or code lenses, and <code>textDocument/didOpen</code> without the workspace-folder notification also returns no symbols or code lenses.</li>
+  <li><strong>Required sequence:</strong> the server returns symbols and Preview DAG code lenses only after both the workspace-folder notification and a document-open notification for the exact file URI.</li>
+  <li><strong>Runtime fix:</strong> the plugin now synchronizes the target document with the language server by sending <code>textDocument/didOpen</code> once and <code>textDocument/didChange</code> on later requests, using the current IDE document text.</li>
 </ul>
 </section>
 

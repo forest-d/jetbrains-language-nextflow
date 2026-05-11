@@ -30,4 +30,20 @@ class NextflowSettingsTest {
         assertEquals(listOf(".git", "work", "scratch"), nextflow["excludePatterns"])
         assertEquals(true, nextflow["harshilAlignment"])
     }
+
+    @Test
+    fun `flat settings match language server configuration keys`() {
+        val settings = NextflowSettings()
+        settings.state.completionMaxItems = 25
+        settings.state.errorReportingMode = ErrorReportingMode.ERRORS
+        settings.state.filesExclude = mutableListOf(".git", "work", "scratch")
+        settings.state.harshilAlignment = true
+
+        val flat = settings.toFlatLspSettings()
+
+        assertEquals(25, flat["nextflow.completion.maxItems"])
+        assertEquals("errors", flat["nextflow.errorReportingMode"])
+        assertEquals(listOf(".git", "work", "scratch"), flat["nextflow.files.exclude"])
+        assertEquals(true, flat["nextflow.formatting.harshilAlignment"])
+    }
 }

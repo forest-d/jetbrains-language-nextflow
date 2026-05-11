@@ -25,7 +25,7 @@ object NextflowLspConfigurationNotifier {
 
             item.initializedServer.thenAccept { server ->
                 server.workspaceService.didChangeConfiguration(
-                    DidChangeConfigurationParams(NextflowSettings.getInstance().toLspSettings())
+                    DidChangeConfigurationParams(NextflowSettings.getInstance().toFlatLspSettings())
                 )
             }.exceptionally { error ->
                 LOG.debug("Failed to send Nextflow settings to language server", error)
