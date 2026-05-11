@@ -126,7 +126,7 @@ workflow QC_PIPELINE {
     reads_ch  // tuple(sample_id, [read1, read2])
 
     main:
-    FASTQC(reads_ch)
+    FASTQCx(reads_ch)
 
     qc_files = FASTQC.out.zips
         .map { sample_id, zips -> zips }

@@ -59,11 +59,11 @@ to confirm feature parity and close remaining gaps.</p>
     <td>Same TextMate grammars via bundleProvider</td>
     <td>Parity &mdash; verify</td>
   </tr>
-  <tr class="gap">
+  <tr class="parity">
     <td>Diagnostics &amp; error reporting</td>
     <td>LSP + configurable mode; real-time on edit</td>
-    <td>LSP + ErrorReportingMode enum; real-time bridge verified; mode toggle broken</td>
-    <td><strong>Gap &mdash; error reporting setting has no effect</strong></td>
+    <td>LSP + ErrorReportingMode enum; real-time bridge; mode toggle fixed (flat&rarr;nested settings format)</td>
+    <td>Parity &mdash; verify</td>
   </tr>
   <tr class="parity">
     <td>Hover information</td>
@@ -215,7 +215,7 @@ plus a structured manual test checklist and any automated test additions.</p>
 results. Fix any regressions or gaps found during verification.</p>
 
 <div class="step done" data-status="done">Syntax highlighting: open each fixture file type (.nf, .nf.test, nextflow.config) and visually verify keyword, string, comment, and operator highlighting matches VS Code output</div>
-<div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes <strong>[BLOCKED: error-reporting toggle bug &mdash; see notes]</strong></div>
+<div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes (settings format bug fixed &mdash; needs manual verification)</div>
 <div class="step" data-status="pending">Hover: hover over process names, function calls, channel variables, and params; verify tooltip shows definition and any Javadoc; compare content with VS Code hover output</div>
 <div class="step" data-status="pending">Code completion: trigger completion inside a workflow body for process names, channel methods, and params; verify extended completion surfaces symbols from modules/sample_module.nf when enabled</div>
 <div class="step" data-status="pending">Code navigation: Ctrl+click on a process call to verify go-to-definition; use Find Usages on a process name to verify find-references; test cross-file navigation to modules/</div>
@@ -313,7 +313,8 @@ and our JetBrains plugin. Add automated regression tests where feasible.</p>
       DAG structure. Research needed in Phase 5.</li>
 </ul>
 
-<p><strong>2026-05-11:</strong> Phase 2 partial &mdash; syntax highlighting verified, two diagnostics bugs found.</p>
+<p><strong>2026-05-11:</strong> Phase 2 partial &mdash; syntax highlighting verified, two diagnostics bugs found and fixed
+(real-time diagnostics bridge + settings format flat&rarr;nested). Both need manual IDE verification.</p>
 
 <h3>Syntax Highlighting Results</h3>
 <ul>
@@ -368,41 +369,37 @@ real-time as the user types.</p>
 <p><strong>Symptom:</strong> Changing Settings &rarr; Nextflow &rarr; Error Reporting from
 &ldquo;Warnings&rdquo; to &ldquo;Off&rdquo; and clicking Apply does not remove existing
 squiggles.</p>
-<p><strong>Investigation:</strong></p>
+<p><strong>Root cause:</strong> All three settings emission paths (<code>createSettings()</code>,
+<code>notifyChanged()</code>, <code>ensureWorkspaceInitialized()</code>) were sending
+<strong>flat-format</strong> settings (<code>{"nextflow.errorReportingMode":"off"}</code>)
+instead of <strong>nested-format</strong> settings
+(<code>{"nextflow":{"errorReportingMode":"off"}}</code>).</p>
+<p>When the Nextflow LS queries <code>workspace/configuration</code> with section
+<code>"nextflow"</code>, LSP4IJ&rsquo;s <code>SettingsHelper.findSettings()</code> tries three
+strategies: (1) direct key lookup, (2) nested object walk, (3) prefix-matching fallback.
+With flat keys, strategies 1&ndash;2 fail, and strategy 3 returns the raw dotted keys
+(e.g., <code>"nextflow.errorReportingMode"</code>) instead of the nested
+<code>"errorReportingMode"</code> the LS expects. Initialization worked because
+<code>getInitializationOptions()</code> already used the nested format.</p>
+<p><strong>Fix:</strong> Changed all three paths to use <code>toLspSettings()</code> (nested with
+<code>"nextflow"</code> wrapper) instead of <code>toFlatLspSettings()</code>:</p>
 <ul>
-  <li><strong>Latest result:</strong> Turning error checking off still has no visible effect.
-      Existing squiggles remain after changing the setting to Off and applying the settings.</li>
-  <li><code>NextflowLspConfigurationNotifier.notifyChanged()</code> sends
-      <code>workspace/didChangeConfiguration</code> with our flat settings map
-      (<code>nextflow.errorReportingMode: "off"</code>).</li>
-  <li><code>NextflowLanguageClient.createSettings()</code> now returns the same flat settings
-      as a <code>JsonObject</code>, enabling LSP4IJ&rsquo;s <code>CALL_DID_CHANGE_CONFIGURATION</code>
-      and <code>workspace/configuration</code> pull support.</li>
-  <li><strong>Possible causes:</strong>
-    <ol>
-      <li>The Nextflow LS may expect the <em>nested</em> settings format
-          (<code>{"nextflow":{"errorReportingMode":"off"}}</code>) for
-          <code>didChangeConfiguration</code>, not the flat format
-          (<code>{"nextflow.errorReportingMode":"off"}</code>).</li>
-      <li>The LS may pull settings via <code>workspace/configuration</code> with a specific
-          section name (e.g., <code>"nextflow"</code>) and our <code>createSettings()</code> returns
-          the flat map at the root level, so <code>findSettings("nextflow")</code> returns
-          nothing.</li>
-      <li>The LS may require a server restart to apply error-reporting changes.</li>
-    </ol>
-  </li>
-  <li><strong>Next step:</strong> Fix the settings notification and diagnostic refresh path:
-      verify the exact <code>didChangeConfiguration</code> payload received by the LS, send the
-      format the LS consumes, and force LSP4IJ diagnostics to clear/reload when the mode changes.</li>
+  <li><code>NextflowLanguageClient.createSettings()</code> &mdash; used for
+      <code>workspace/configuration</code> pull requests</li>
+  <li><code>NextflowLspConfigurationNotifier.notifyChanged()</code> &mdash; used for
+      <code>didChangeConfiguration</code> push on settings apply</li>
+  <li><code>NextflowLspRuntime.ensureWorkspaceInitialized()</code> &mdash; used for
+      initial workspace setup</li>
 </ul>
+<p><strong>Status:</strong> Fixed. Needs manual verification in IDE.</p>
 
 <h3>Code Changes Made During Phase 2</h3>
 <ul>
   <li><strong>New file:</strong> <code>NextflowLanguageClient.kt</code> &mdash; custom
       <code>LanguageClientImpl</code> that overrides <code>createSettings()</code> to return
-      Nextflow settings as a <code>JsonObject</code>. All manual LSP notifications
-      (workspace folders, didOpen, didChangeConfiguration) were removed after testing
-      showed they interfered with LSP4IJ&rsquo;s document lifecycle.</li>
+      Nextflow settings as a <code>JsonObject</code>. Now uses <code>toLspSettings()</code>
+      (nested format) so LSP4IJ can resolve <code>workspace/configuration</code> section
+      lookups correctly.</li>
   <li><strong>Modified:</strong> <code>NextflowLanguageServerFactory.kt</code> &mdash; overrides
       <code>createLanguageClient()</code> to return the custom client.</li>
   <li><strong>New file:</strong> <code>NextflowRealtimeDiagnostics.kt</code> &mdash; bridges unsaved
@@ -410,6 +407,11 @@ squiggles.</p>
       diagnostics update without Ctrl+S.</li>
   <li><strong>Modified:</strong> <code>NextflowStartupActivity.kt</code> &mdash; installs the
       real-time diagnostics bridge per project.</li>
+  <li><strong>Modified:</strong> <code>NextflowLspConfigurationNotifier.kt</code> &mdash; switched
+      <code>didChangeConfiguration</code> payload from <code>toFlatLspSettings()</code> to
+      <code>toLspSettings()</code> (nested format).</li>
+  <li><strong>Modified:</strong> <code>NextflowLspRuntime.kt</code> &mdash; switched initial
+      workspace <code>didChangeConfiguration</code> from flat to nested settings format.</li>
 </ul>
 </section>
 

@@ -98,6 +98,7 @@ class NextflowSettingsConfigurable : SearchableConfigurable {
         val state = settings.state
         val oldVersion = state.languageServerVersion
         val oldJavaHome = state.javaHome
+        val oldErrorMode = state.errorReportingMode
 
         state.completionMaxItems = maxItems.value as Int
         state.completionExtended = extendedCompletion.isSelected
@@ -111,8 +112,9 @@ class NextflowSettingsConfigurable : SearchableConfigurable {
         state.javaHome = javaHome.text.trim()
 
         val restartRequired = oldVersion != state.languageServerVersion || oldJavaHome != state.javaHome
+        val errorModeChanged = oldErrorMode != state.errorReportingMode
         ProjectManager.getInstance().openProjects.forEach { project ->
-            NextflowLspConfigurationNotifier.notifyChanged(project, restartRequired)
+            NextflowLspConfigurationNotifier.notifyChanged(project, restartRequired, errorModeChanged)
         }
     }
 
