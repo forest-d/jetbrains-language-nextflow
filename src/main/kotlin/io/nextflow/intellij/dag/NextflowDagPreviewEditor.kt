@@ -17,6 +17,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
@@ -34,7 +35,7 @@ class NextflowDagPreviewEditor(
     private val statusLabel = JBLabel("DAG preview")
     private val panel = JPanel(BorderLayout())
     private val browser = if (JBCefApp.isSupported()) JBCefBrowser() else null
-    private val navigationQuery = browser?.let { JBCefJSQuery.create(it) }
+    private val navigationQuery = browser?.let { JBCefJSQuery.create(it as JBCefBrowserBase) }
     private val textArea = JBTextArea(previewFile.mermaid)
     private val refreshTimer = Timer(750) { refresh() }
 

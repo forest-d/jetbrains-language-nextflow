@@ -194,9 +194,10 @@ object NextflowDagPreviewService {
             .notify(project)
     }
 
+    @Suppress("DEPRECATION") // SymbolInformation fields are deprecated in LSP 3.17 but servers still return them
     private fun SymbolInformation.toNamedLocation(): NamedLocation? {
-        val location = location ?: return null
-        return NamedLocation(name, location)
+        val loc = location ?: return null
+        return NamedLocation(name, loc)
     }
 
     private fun WorkspaceSymbol.toNamedLocation(): NamedLocation? {

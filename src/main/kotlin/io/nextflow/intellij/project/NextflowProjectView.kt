@@ -80,7 +80,7 @@ class NextflowProjectView(private val project: Project) : Disposable {
                 }
             }
         })
-        TreeSpeedSearch(tree) { path -> path.lastPathComponent.toString() }
+        TreeSpeedSearch.installOn(tree, false) { path -> path.lastPathComponent.toString() }
 
         component.add(toolbar, BorderLayout.NORTH)
         component.add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER)
@@ -282,10 +282,11 @@ class NextflowProjectView(private val project: Project) : Disposable {
         }
     }
 
+    @Suppress("DEPRECATION") // SymbolInformation fields are deprecated in LSP 3.17 but servers still return them
     private fun SymbolInformation.toProjectSymbol(): ProjectSymbol? {
-        val location = location ?: return null
-        if (!location.uri.isNextflowUri()) return null
-        return ProjectSymbol(name.toDisplaySymbolName(), kind, containerName, location, SymbolCategory.from(name, kind, containerName))
+        val loc = location ?: return null
+        if (!loc.uri.isNextflowUri()) return null
+        return ProjectSymbol(name.toDisplaySymbolName(), kind, containerName, loc, SymbolCategory.from(name, kind, containerName))
     }
 
     private fun DocumentSymbol.toProjectSymbols(uri: String, containerName: String? = null): List<ProjectSymbol> {
