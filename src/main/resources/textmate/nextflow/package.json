@@ -1,0 +1,35 @@
+{
+  "name": "nextflow",
+  "contributes": {
+    "languages": [
+      {
+        "id": "nextflow",
+        "aliases": ["Nextflow"],
+        "extensions": [".nf", ".nf.test"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "nextflow-config",
+        "aliases": ["Nextflow Config"],
+        "extensions": [".config"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nextflow",
+        "scopeName": "source.nextflow",
+        "path": "./syntaxes/nextflow.tmLanguage.json"
+      },
+      {
+        "language": "nextflow-config",
+        "scopeName": "source.nextflow-config",
+        "path": "./syntaxes/nextflow-config.tmLanguage.json"
+      },
+      {
+        "scopeName": "source.nextflow-groovy",
+        "path": "./syntaxes/groovy.tmLanguage.json"
+      }
+    ]
+  }
+}

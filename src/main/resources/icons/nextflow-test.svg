@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <defs>
+    <linearGradient id="nft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8A838"/>
+      <stop offset="100%" style="stop-color:#D49530"/>
+    </linearGradient>
+  </defs>
+  <rect width="16" height="16" rx="3" fill="url(#nft)"/>
+  <text x="8" y="12" font-family="Arial,sans-serif" font-size="7" font-weight="bold" fill="white" text-anchor="middle">TST</text>
+</svg>

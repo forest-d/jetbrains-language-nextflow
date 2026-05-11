@@ -1,0 +1,60 @@
+<idea-plugin>
+    <id>io.nextflow.intellij</id>
+    <name>Nextflow</name>
+    <vendor url="https://nextflow.io">Nextflow</vendor>
+
+    <description><![CDATA[
+        <p>Nextflow language support for JetBrains IDEs.</p>
+        <p>Provides syntax highlighting, code completion, diagnostics, navigation,
+        and more — powered by the Nextflow Language Server.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.textmate</depends>
+    <depends>com.redhat.devtools.lsp4ij</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity
+                implementation="io.nextflow.intellij.NextflowStartupActivity"/>
+
+        <!-- TextMate grammar bundle -->
+        <textmate.bundleProvider
+                implementation="io.nextflow.intellij.NextflowTextMateBundleProvider"/>
+
+        <!-- File types with custom icons -->
+        <fileType
+                name="Nextflow"
+                implementationClass="io.nextflow.intellij.NextflowFileType"
+                fieldName="INSTANCE"
+                extensions="nf"/>
+        <fileType
+                name="Nextflow Test"
+                implementationClass="io.nextflow.intellij.NextflowTestFileType"
+                fieldName="INSTANCE"
+                fileNameEnding=".nf.test"/>
+        <fileType
+                name="Nextflow Config"
+                implementationClass="io.nextflow.intellij.NextflowConfigFileType"
+                fieldName="INSTANCE"
+                fileNames="nextflow.config"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+        <server id="io.nextflow.languageServer"
+                name="Nextflow Language Server"
+                factoryClass="io.nextflow.intellij.lsp.NextflowLanguageServerFactory">
+            <description><![CDATA[
+                Nextflow Language Server for .nf, .nf.test, and nextflow.config files.
+            ]]></description>
+        </server>
+        <fileTypeMapping fileType="Nextflow"
+                         serverId="io.nextflow.languageServer"
+                         languageId="nextflow"/>
+        <fileTypeMapping fileType="Nextflow Test"
+                         serverId="io.nextflow.languageServer"
+                         languageId="nextflow"/>
+        <fileTypeMapping fileType="Nextflow Config"
+                         serverId="io.nextflow.languageServer"
+                         languageId="nextflow-config"/>
+    </extensions>
+</idea-plugin>
