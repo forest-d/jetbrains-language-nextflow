@@ -26,10 +26,10 @@ pass/fail. Note any discrepancies in the "Notes" column.
 |---|------|-----------------|------|-------|
 | 2.1 | Open `main.nf` with no errors | No red/yellow squiggles in a valid file | PASS | Diagnostics appear after initial LS startup (~5s) |
 | 2.2 | Add typo: change `FASTQC(reads_ch)` to `FASTQX(reads_ch)` | Red squiggle on `FASTQX`; error in Problems panel | PASS | Real-time diagnostics now appear without Ctrl+S after the `NextflowRealtimeDiagnostics` bridge fix. |
-| 2.3 | Set error reporting to "Off" | All squiggles disappear | | Fix applied (flat→nested settings format). Re-test needed. |
-| 2.4 | Set error reporting to "Errors" | Only red (error) squiggles visible | | Unblocked — re-test needed |
-| 2.5 | Set error reporting to "Warnings" | Red and yellow squiggles visible | | Unblocked — re-test needed |
-| 2.6 | Set error reporting to "Paranoid" | All diagnostics visible including hints/info | | Unblocked — re-test needed |
+| 2.3 | Set error reporting to "Off" | All squiggles disappear | PASS | Client-side diagnostic filtering. Switching to Off immediately clears all squiggles. |
+| 2.4 | Set error reporting to "Errors" | Only red (error) squiggles visible | | Unblocked — needs testing |
+| 2.5 | Set error reporting to "Warnings" | Red and yellow squiggles visible | | Unblocked — needs testing |
+| 2.6 | Set error reporting to "Paranoid" | All diagnostics visible including hints/info | | Unblocked — needs testing |
 | 2.7 | Verify diagnostics in `nextflow.config` | Introduce a syntax error in config; verify it's reported | | Not yet tested |
 
 ## 3. Hover Information
@@ -151,7 +151,7 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Category | Total | Pass | Fail | Blocked | Not tested |
 |----------|-------|------|------|---------|------------|
 | Syntax Highlighting | 5 | 5 | 0 | 0 | 0 |
-| Diagnostics | 7 | 2 | 0 | 0 | 5 |
+| Diagnostics | 7 | 3 | 0 | 0 | 4 |
 | Hover | 6 | 0 | 0 | 0 | 6 |
 | Completion | 7 | 0 | 0 | 0 | 7 |
 | Navigation | 7 | 0 | 0 | 0 | 7 |
@@ -163,7 +163,7 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Settings | 5 | 0 | 0 | 0 | 5 |
 | LS Management | 4 | 0 | 0 | 0 | 4 |
 | Param Schema | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **69** | **7** | **0** | **0** | **62** |
+| **Total** | **69** | **8** | **0** | **0** | **61** |
 
 ### Open Bugs
 
@@ -174,4 +174,4 @@ None.
 | Bug | Resolution |
 |-----|------------|
 | Diagnostics not real-time | Fixed and manually verified. `NextflowRealtimeDiagnostics` sends debounced full-text `textDocument/didChange` for real Nextflow files without saving. |
-| Error reporting toggle broken | Fixed. Root cause: all settings emission paths (`createSettings()`, `notifyChanged()`, `ensureWorkspaceInitialized()`) were sending flat-format settings (`nextflow.errorReportingMode`) instead of nested format (`nextflow: { errorReportingMode }`). LSP4IJ's `SettingsHelper.findSettings()` couldn't resolve section lookups against flat keys. Changed all three paths to use `toLspSettings()` (nested). Needs manual re-verification. |
+| Error reporting toggle broken | Fixed and manually verified. Root cause: upstream Nextflow LS bug — `didChangeConfiguration` can never apply settings at runtime (LSP4J Gson deserializes `Object` to `LinkedTreeMap`, but LS's `JsonUtils.getObjectPath()` requires `JsonObject`). Fix: client-side diagnostic filtering in `NextflowLanguageClient.publishDiagnostics()` with `clearDiagnostics()` + document re-sync on mode change. |

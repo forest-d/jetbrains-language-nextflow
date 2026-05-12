@@ -45,6 +45,11 @@
                 id="NextflowStatus"
                 implementation="io.nextflow.intellij.NextflowStatusBarWidgetFactory"/>
 
+        <!-- DEBUG: hover diagnostics — remove once hover is working -->
+        <platform.backend.documentation.targetProvider
+                implementation="io.nextflow.intellij.lsp.NextflowHoverDebugProvider"
+                order="first"/>
+
         <!-- TextMate grammar bundle -->
         <textmate.bundleProvider
                 implementation="io.nextflow.intellij.NextflowTextMateBundleProvider"/>
@@ -75,15 +80,15 @@
                 Nextflow Language Server for .nf, .nf.test, and nextflow.config files.
             ]]></description>
         </server>
-        <fileTypeMapping fileType="Nextflow"
-                         serverId="io.nextflow.languageServer"
-                         languageId="nextflow"/>
-        <fileTypeMapping fileType="Nextflow Test"
-                         serverId="io.nextflow.languageServer"
-                         languageId="nextflow"/>
-        <fileTypeMapping fileType="Nextflow Config"
-                         serverId="io.nextflow.languageServer"
-                         languageId="nextflow-config"/>
+        <fileNamePatternMapping patterns="*.nf"
+                               serverId="io.nextflow.languageServer"
+                               languageId="nextflow"/>
+        <fileNamePatternMapping patterns="*.nf.test"
+                               serverId="io.nextflow.languageServer"
+                               languageId="nextflow"/>
+        <fileNamePatternMapping patterns="nextflow.config"
+                               serverId="io.nextflow.languageServer"
+                               languageId="nextflow-config"/>
     </extensions>
 
     <actions>
@@ -94,5 +99,8 @@
                 icon="/icons/nextflow.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
+        <action id="nextflow.previewDag"
+                class="io.nextflow.intellij.dag.NextflowDagPreviewCommandAction"
+                text="Preview DAG"/>
     </actions>
 </idea-plugin>
