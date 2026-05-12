@@ -135,7 +135,7 @@ workflow QC_PIPELINE {
     MULTIQC(qc_files)
 
     emit:
-    fastqc_reports = FASTQC.out.reports
+    fastqc_reports = FASTQC.out.report
     multiqc_report = MULTIQC.out.report
 }
 

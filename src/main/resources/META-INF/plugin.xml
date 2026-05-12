@@ -45,10 +45,9 @@
                 id="NextflowStatus"
                 implementation="io.nextflow.intellij.NextflowStatusBarWidgetFactory"/>
 
-        <!-- DEBUG: completion diagnostics — remove once completion is working -->
         <completion.contributor
-                language="textmate"
-                implementationClass="io.nextflow.intellij.lsp.NextflowCompletionDebugContributor"
+                language="any"
+                implementationClass="io.nextflow.intellij.completion.NextflowOutputCompletionContributor"
                 order="first"/>
 
         <!-- TextMate grammar bundle -->

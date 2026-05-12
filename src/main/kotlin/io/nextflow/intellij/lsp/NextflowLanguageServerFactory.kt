@@ -23,6 +23,5 @@ class NextflowLanguageServerFactory : LanguageServerFactory {
                     onConfigurationChanged = LSPConfigurationFeature.OnConfigurationChanged.CALL_DID_CHANGE_CONFIGURATION
                 }
             )
-            .setCompletionFeature(NextflowCompletionFeature())
     }
 }
