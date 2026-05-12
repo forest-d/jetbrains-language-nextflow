@@ -26,4 +26,18 @@ class NextflowSchemaHoverParserTest {
         assertEquals("Reference genome identifier used for read alignment.", param?.description)
         assertEquals(listOf("GRCh38", "GRCh37"), param?.enumValues)
     }
+
+    @Test
+    fun `extracts schema parameter names`() {
+        val json = """
+            {
+              "properties": {
+                "genome": { "type": "string" },
+                "reads": { "type": "string" }
+              }
+            }
+        """.trimIndent()
+
+        assertEquals(listOf("genome", "reads"), NextflowSchemaHoverParser.findParamNames(json))
+    }
 }

@@ -183,7 +183,7 @@ workflow {
         .map { sample_id, summary -> tuple(sample_id, summary) }
 
     COUNT_LINES(summary_ch)
-
+    
     // Mix QC and alignment outputs for downstream use
     all_reports = QC_PIPELINE.out.fastqc_reports
         .mix(PROCESS_READS.out.summaries)

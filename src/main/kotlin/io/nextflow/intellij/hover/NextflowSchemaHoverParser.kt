@@ -4,6 +4,12 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 
 object NextflowSchemaHoverParser {
+    fun findParamNames(json: String): List<String> {
+        val root = runCatching { JsonParser.parseString(json).asJsonObject }.getOrNull() ?: return emptyList()
+        val properties = root.getAsJsonObject("properties") ?: return emptyList()
+        return properties.entrySet().map { it.key }
+    }
+
     fun findParam(json: String, name: String): SchemaParam? {
         val root = runCatching { JsonParser.parseString(json).asJsonObject }.getOrNull() ?: return null
         val properties = root.getAsJsonObject("properties") ?: return null

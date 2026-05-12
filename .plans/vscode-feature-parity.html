@@ -443,13 +443,16 @@ conflict), we now match by filename pattern: <code>*.nf</code>, <code>*.nf.test<
 
 <h3>Bug: Parameter and Channel Variable Hover Missing Detail</h3>
 <p><strong>Manual test results:</strong> Hover tests 3.1, 3.2, 3.5, and 3.6 pass.
-Hover test 3.3 (<code>params.genome</code>) showed no tooltip. Hover test 3.4
-(<code>reads_ch</code>) only showed the variable name and no channel type/origin context.</p>
+Hover test 3.3 (<code>params.genome</code>) originally showed no tooltip. Hover test 3.4
+(<code>reads_ch</code>) originally only showed the variable name and no channel type/origin
+context. Both are now fixed and manually verified.</p>
 <p><strong>Fix:</strong> Added a narrow documentation fallback for Nextflow files:</p>
 <ul>
-  <li><code>NextflowHoverDocumentationProvider.kt</code> &mdash; registered as a
-      documentation provider. It returns fallback docs only for known weak hover
-      cases and otherwise lets LSP4IJ&rsquo;s normal hover path handle documentation.</li>
+  <li><code>NextflowHoverDocumentationProvider.kt</code> and
+      <code>NextflowHoverDocumentationTargetProvider.kt</code> &mdash; registered on both
+      legacy and modern JetBrains documentation paths. They return fallback docs only
+      for known weak hover cases and otherwise let LSP4IJ&rsquo;s normal hover path handle
+      documentation.</li>
   <li><code>params.&lt;name&gt;</code> fallback &mdash; reads <code>nextflow_schema.json</code>
       for type, description, default, and enum values, with a <code>nextflow.config</code>
       default fallback.</li>
@@ -460,8 +463,7 @@ Hover test 3.3 (<code>params.genome</code>) showed no tooltip. Hover test 3.4
       <code>NextflowSchemaHoverParserTest.kt</code> cover schema parsing for parameter
       hover content.</li>
 </ul>
-<p><strong>Status:</strong> Fix implemented; needs manual retest of checklist items 3.3
-and 3.4.</p>
+<p><strong>Status:</strong> Fixed and manually verified. Checklist items 3.3 and 3.4 now pass.</p>
 
 <h3>Bug: Code Lens &ldquo;Preview DAG&rdquo; Click Shows Missing Command Error</h3>
 <p><strong>Symptom:</strong> After fixing hover (which also enabled code lenses), a
@@ -530,6 +532,28 @@ without changing general LSP completion behavior.</p>
 <p><strong>Status:</strong> Fixed and manually verified. <code>FASTQC.out.</code> now offers
 <code>reports</code> and <code>zips</code>.</p>
 
+<h3>Bug: Process, Params, and Channel Completion Fall Back to Word Completion</h3>
+<p><strong>Manual test results:</strong> Completion tests 4.1, 4.2, and 4.3 fail.
+Typing <code>FA</code>, <code>params.</code>, or <code>Channel.</code> shows IntelliJ word
+completion rather than the proper Nextflow process, parameter, or channel factory items.</p>
+<p><strong>Root cause:</strong> Same class of issue as 4.4. LSP4IJ invokes completion, but
+the upstream Nextflow LS does not provide useful items at these incomplete cursor states,
+so lower-priority word completion becomes the visible result.</p>
+<p><strong>Fix:</strong> Extended the targeted JetBrains completion fallback:</p>
+<ul>
+  <li>Process-name completion &mdash; detects identifier prefixes such as <code>FA</code>
+      in a workflow body and offers local process names plus included process aliases.</li>
+  <li><code>params.</code> completion &mdash; offers parameter names from
+      <code>nextflow_schema.json</code> and <code>nextflow.config</code>.</li>
+  <li><code>Channel.</code> completion &mdash; offers common channel factories including
+      <code>of</code>, <code>fromPath</code>, <code>fromFilePairs</code>, and
+      <code>empty</code>.</li>
+  <li><code>NextflowOutputCompletionSupportTest.kt</code> now covers detection and
+      extraction helpers for these fallback contexts.</li>
+</ul>
+<p><strong>Status:</strong> Fix implemented; checklist items 4.1, 4.2, and 4.3 need manual
+retest.</p>
+
 <h3>Bug: DAG Preview Crash on File Edit</h3>
 <p><strong>Symptom:</strong> <code>IncorrectOperationException: File is not writable</code>
 when typing in a <code>.nf</code> file that has a DAG preview open. The auto-refresh
@@ -577,17 +601,20 @@ and <code>render()</code> uses that field, so the VFS content sync was unnecessa
   <li><strong>New file:</strong> <code>NextflowHoverDocumentationProvider.kt</code> &mdash;
       targeted fallback hover documentation for schema-backed params and channel-like
       workflow variables when the LSP hover is missing or too thin.</li>
+  <li><strong>New file:</strong> <code>NextflowHoverDocumentationTargetProvider.kt</code> &mdash;
+      modern JetBrains documentation target provider for the same hover fallback, ordered
+      before LSP4IJ&rsquo;s provider.</li>
   <li><strong>New file:</strong> <code>NextflowSchemaHoverParser.kt</code> &mdash; extracts
       parameter type, description, default, and enum values from
       <code>nextflow_schema.json</code>.</li>
   <li><strong>New file:</strong> <code>NextflowSchemaHoverParserTest.kt</code> &mdash;
       regression coverage for schema parameter hover parsing.</li>
   <li><strong>New file:</strong> <code>NextflowOutputCompletionSupport.kt</code> &mdash; helper
-      for detecting <code>PROCESS.out.</code> completion contexts and extracting named
-      <code>emit:</code> outputs from local process declarations.</li>
+      for detecting fallback completion contexts: <code>PROCESS.out.</code>, process-name
+      prefixes, <code>params.</code>, and <code>Channel.</code>.</li>
   <li><strong>New file:</strong> <code>NextflowOutputCompletionContributor.kt</code> &mdash;
-      targeted JetBrains completion fallback for named process outputs when the upstream
-      LS returns no items at a trailing-dot cursor.</li>
+      targeted JetBrains completion fallback for process outputs, process names,
+      params, and Channel factories when the upstream LS returns no useful items.</li>
   <li><strong>New file:</strong> <code>NextflowOutputCompletionSupportTest.kt</code> &mdash;
       regression coverage for named output completion parsing.</li>
   <li><strong>Removed:</strong> <code>NextflowCompletionFeature.kt</code> and

@@ -52,4 +52,46 @@ class NextflowOutputCompletionSupportTest {
     fun `ignores non output access lines`() {
         assertNull(NextflowOutputCompletionSupport.outputAccessAt("FASTQC.out", "FASTQC.out".length))
     }
+
+    @Test
+    fun `detects params access with empty prefix`() {
+        val text = "script:\n\"\"\"\nnextflow run --genome ${'$'}{params.}\n\"\"\""
+        val offset = text.indexOf("params.") + "params.".length
+
+        val access = NextflowOutputCompletionSupport.paramsAccessAt(text, offset)
+
+        assertEquals("", access?.prefix)
+    }
+
+    @Test
+    fun `detects channel factory access with prefix`() {
+        val text = "workflow {\n    reads_ch = Channel.from\n}"
+        val offset = text.indexOf("Channel.from") + "Channel.from".length
+
+        val access = NextflowOutputCompletionSupport.channelAccessAt(text, offset)
+
+        assertEquals("from", access?.prefix)
+    }
+
+    @Test
+    fun `detects process call prefix`() {
+        val text = "workflow {\n    FA\n}"
+        val offset = text.indexOf("FA") + "FA".length
+
+        assertEquals("FA", NextflowOutputCompletionSupport.processPrefixAt(text, offset))
+    }
+
+    @Test
+    fun `extracts local and included process names`() {
+        val text = """
+            include { ALIGN_READS; SUMMARIZE_ALIGNMENT as SUMMARIZE_ALIGNMENT } from './module'
+
+            process FASTQC {
+            }
+        """.trimIndent()
+
+        val names = NextflowOutputCompletionSupport.findProcessNames(text)
+
+        assertEquals(listOf("FASTQC", "ALIGN_READS", "SUMMARIZE_ALIGNMENT"), names)
+    }
 }

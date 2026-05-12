@@ -1,7 +1,6 @@
 package io.nextflow.intellij.hover
 
 import com.intellij.lang.documentation.AbstractDocumentationProvider
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiElement
@@ -17,10 +16,8 @@ class NextflowHoverDocumentationProvider : AbstractDocumentationProvider() {
         val offset = anchor.textRange?.startOffset ?: return null
         val text = file.text
 
-        val html = NextflowHoverSupport.paramHover(file, text, offset)
+        return NextflowHoverSupport.paramHover(file, text, offset)
             ?: NextflowHoverSupport.variableHover(text, offset)
-        LOG.warn("Nextflow hover fallback legacy provider: file=${file.name}, offset=$offset, matched=${html != null}")
-        return html
     }
 
     override fun getQuickNavigateInfo(element: PsiElement?, originalElement: PsiElement?): String? {
@@ -31,9 +28,6 @@ class NextflowHoverDocumentationProvider : AbstractDocumentationProvider() {
         return name.endsWith(".nf") || name.endsWith(".nf.test") || name == "nextflow.config"
     }
 
-    companion object {
-        private val LOG = Logger.getInstance(NextflowHoverDocumentationProvider::class.java)
-    }
 }
 
 object NextflowHoverSupport {

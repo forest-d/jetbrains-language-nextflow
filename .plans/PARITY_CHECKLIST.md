@@ -38,8 +38,8 @@ pass/fail. Note any discrepancies in the "Notes" column.
 |---|------|-----------------|------|-------|
 | 3.1 | Hover over `FASTQC` in entry workflow | Tooltip shows process definition with Javadoc comment | PASS | |
 | 3.2 | Hover over `parseSampleId` call | Tooltip shows function signature and `@param`/`@return` docs | PASS | |
-| 3.3 | Hover over `params.genome` | Tooltip shows parameter definition; if schema present, shows schema description | FAIL | No hover displayed in manual test. Fix implemented: fallback documentation provider reads `nextflow_schema.json` and `nextflow.config`; needs retest. |
-| 3.4 | Hover over `reads_ch` variable | Tooltip shows channel type/origin | FAIL | Hover only shows `reads_ch` in manual test. Fix implemented: fallback documentation provider shows nearest workflow input hint or channel assignment origin; needs retest. |
+| 3.3 | Hover over `params.genome` | Tooltip shows parameter definition; if schema present, shows schema description | PASS | Fixed with fallback documentation provider reading `nextflow_schema.json` and `nextflow.config`. |
+| 3.4 | Hover over `reads_ch` variable | Tooltip shows channel type/origin | PASS | Fixed with fallback documentation provider showing nearest workflow input hint or channel assignment origin. |
 | 3.5 | Hover over `ALIGN_READS` (included process) | Tooltip shows definition from `modules/sample_module.nf` | PASS | |
 | 3.6 | Hover over `task.cpus` in script block | Tooltip shows built-in task property info | PASS | |
 
@@ -47,9 +47,9 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 4.1 | Type `FA` inside entry workflow body | `FASTQC` appears in completion list | | |
-| 4.2 | Type `params.` inside a process script | Completion offers `input_dir`, `output_dir`, `genome`, etc. | | |
-| 4.3 | Type `Channel.` | Completion offers `of`, `fromPath`, `fromFilePairs`, `empty`, etc. | | |
+| 4.1 | Type `FA` inside entry workflow body | `FASTQC` appears in completion list | FAIL | Word completion appears instead of proper process completions. Same class of issue as 4.4; fallback for local/included process names implemented and needs retest. |
+| 4.2 | Type `params.` inside a process script | Completion offers `input_dir`, `output_dir`, `genome`, etc. | FAIL | Word completion appears instead of proper parameter completions. Same class of issue as 4.4; fallback from `nextflow_schema.json` and `nextflow.config` implemented and needs retest. |
+| 4.3 | Type `Channel.` | Completion offers `of`, `fromPath`, `fromFilePairs`, `empty`, etc. | FAIL | Word completion appears instead of proper Channel factory completions. Same class of issue as 4.4; fallback for common Channel factories implemented and needs retest. |
 | 4.4 | Type `FASTQC.out.` after FASTQC call | Completion offers `reports`, `zips` (named outputs) | PASS | Fixed with a targeted JetBrains completion contributor for `PROCESS.out.` named outputs. Upstream LS direct completion still returns 0 at the trailing-dot cursor. |
 | 4.5 | Enable "extended completion"; type `ALI` in main.nf | `ALIGN_READS` from module appears in completions | | |
 | 4.6 | Disable "extended completion"; type `ALI` in main.nf | `ALIGN_READS` does NOT appear (only included symbols) | | |
@@ -152,8 +152,8 @@ pass/fail. Note any discrepancies in the "Notes" column.
 |----------|-------|------|------|---------|------------|
 | Syntax Highlighting | 5 | 5 | 0 | 0 | 0 |
 | Diagnostics | 7 | 3 | 0 | 0 | 4 |
-| Hover | 6 | 4 | 2 | 0 | 0 |
-| Completion | 7 | 1 | 0 | 0 | 6 |
+| Hover | 6 | 6 | 0 | 0 | 0 |
+| Completion | 7 | 1 | 3 | 0 | 3 |
 | Navigation | 7 | 0 | 0 | 0 | 7 |
 | Renaming | 4 | 0 | 0 | 0 | 4 |
 | Formatting | 5 | 0 | 0 | 0 | 5 |
@@ -163,7 +163,7 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Settings | 5 | 0 | 0 | 0 | 5 |
 | LS Management | 4 | 0 | 0 | 0 | 4 |
 | Param Schema | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **69** | **13** | **2** | **0** | **54** |
+| **Total** | **69** | **15** | **3** | **0** | **51** |
 
 ### Open Bugs
 
@@ -176,5 +176,6 @@ None.
 | Diagnostics not real-time | Fixed and manually verified. `NextflowRealtimeDiagnostics` sends debounced full-text `textDocument/didChange` for real Nextflow files without saving. |
 | Error reporting toggle broken | Fixed and manually verified. Root cause: upstream Nextflow LS bug — `didChangeConfiguration` can never apply settings at runtime (LSP4J Gson deserializes `Object` to `LinkedTreeMap`, but LS's `JsonUtils.getObjectPath()` requires `JsonObject`). Fix: client-side diagnostic filtering in `NextflowLanguageClient.publishDiagnostics()` with `clearDiagnostics()` + document re-sync on mode change. |
 | `FASTQC.out.` named output completion returns no items | Fixed and manually verified. Direct `textDocument/completion` at the trailing-dot cursor returns 0 items from the Nextflow LS, so the plugin now provides a narrow JetBrains-side fallback that extracts `emit:` names from the referenced local process output block. |
-| `params.genome` hover missing | Fix implemented; needs manual retest. Added `NextflowHoverDocumentationProvider` fallback that reads schema descriptions, types, defaults, enum values, and config defaults for `params.<name>` hovers. |
-| `reads_ch` hover too thin | Fix implemented; needs manual retest. Added hover fallback for channel-like workflow variables that shows nearest `take:` comment hint or assignment origin. |
+| `params.genome` hover missing | Fixed and manually verified. Added `NextflowHoverDocumentationProvider` / `NextflowHoverDocumentationTargetProvider` fallback that reads schema descriptions, types, defaults, enum values, and config defaults for `params.<name>` hovers. |
+| `reads_ch` hover too thin | Fixed and manually verified. Added hover fallback for channel-like workflow variables that shows nearest `take:` comment hint or assignment origin. |
+| Process, params, and Channel completions fall back to word completion | Fix implemented; needs manual retest. Extended the 4.4-style JetBrains completion fallback to local/included process names, `params.<name>` from schema/config, and common `Channel.<factory>` methods. |
