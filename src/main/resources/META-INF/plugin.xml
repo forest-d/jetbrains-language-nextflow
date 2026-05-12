@@ -50,6 +50,16 @@
                 implementationClass="io.nextflow.intellij.completion.NextflowOutputCompletionContributor"
                 order="first"/>
 
+        <lang.documentationProvider
+                language=""
+                implementationClass="io.nextflow.intellij.hover.NextflowHoverDocumentationProvider"
+                order="first"/>
+
+        <platform.backend.documentation.targetProvider
+                id="NextflowHoverDocumentationTargetProvider"
+                implementation="io.nextflow.intellij.hover.NextflowHoverDocumentationTargetProvider"
+                order="first, before LSPDocumentationTargetProvider"/>
+
         <!-- TextMate grammar bundle -->
         <textmate.bundleProvider
                 implementation="io.nextflow.intellij.NextflowTextMateBundleProvider"/>

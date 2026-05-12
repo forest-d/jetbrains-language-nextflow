@@ -441,6 +441,28 @@ conflict), we now match by filename pattern: <code>*.nf</code>, <code>*.nf.test<
 <code>isFileSupported</code> return <code>true</code>.</p>
 <p><strong>Status:</strong> Fixed and manually verified.</p>
 
+<h3>Bug: Parameter and Channel Variable Hover Missing Detail</h3>
+<p><strong>Manual test results:</strong> Hover tests 3.1, 3.2, 3.5, and 3.6 pass.
+Hover test 3.3 (<code>params.genome</code>) showed no tooltip. Hover test 3.4
+(<code>reads_ch</code>) only showed the variable name and no channel type/origin context.</p>
+<p><strong>Fix:</strong> Added a narrow documentation fallback for Nextflow files:</p>
+<ul>
+  <li><code>NextflowHoverDocumentationProvider.kt</code> &mdash; registered as a
+      documentation provider. It returns fallback docs only for known weak hover
+      cases and otherwise lets LSP4IJ&rsquo;s normal hover path handle documentation.</li>
+  <li><code>params.&lt;name&gt;</code> fallback &mdash; reads <code>nextflow_schema.json</code>
+      for type, description, default, and enum values, with a <code>nextflow.config</code>
+      default fallback.</li>
+  <li>Channel-like variable fallback &mdash; for names like <code>reads_ch</code>, shows the
+      nearest preceding workflow <code>take:</code> comment hint or local assignment origin
+      such as the <code>Channel.fromFilePairs(...)</code> chain.</li>
+  <li><code>NextflowSchemaHoverParser.kt</code> and
+      <code>NextflowSchemaHoverParserTest.kt</code> cover schema parsing for parameter
+      hover content.</li>
+</ul>
+<p><strong>Status:</strong> Fix implemented; needs manual retest of checklist items 3.3
+and 3.4.</p>
+
 <h3>Bug: Code Lens &ldquo;Preview DAG&rdquo; Click Shows Missing Command Error</h3>
 <p><strong>Symptom:</strong> After fixing hover (which also enabled code lenses), a
 &ldquo;Preview DAG&rdquo; code lens appeared above workflows. Clicking it showed:
@@ -458,69 +480,55 @@ command <code>nextflow.previewDag</code>. LSP4IJ resolves commands by calling
 <code>nextflow.server.previewDag</code> and renders the Mermaid diagram.</p>
 <p><strong>Status:</strong> Fixed and manually verified.</p>
 
-<h3>Bug: Code Completion Returns No LSP Items (In Progress)</h3>
+<h3>Bug: Code Completion for Named Process Outputs Returned No Items</h3>
 <p><strong>Symptom:</strong> Typing <code>FASTQC.out.</code> in a workflow body shows a large
 list of irrelevant items (IntelliJ word completion) instead of the process&rsquo;s
 outputs. No LSP-sourced completion items appear at all.</p>
-<p><strong>Investigation so far:</strong></p>
+<p><strong>Investigation:</strong></p>
 <ul>
   <li>LSP4IJ&rsquo;s <code>LSPCompletionContributor</code> runs (registered with
       <code>language="any"</code>, <code>order="first, before wordCompletion"</code>).
-      Our <code>NextflowCompletionFeature.isSupported()</code> returns <code>true</code>,
+      The temporary <code>NextflowCompletionFeature.isSupported()</code> returned <code>true</code>,
       confirming the server reports <code>completionProvider</code> in its capabilities.</li>
   <li>However, <code>addLookupItem()</code> is never called &mdash; no items reach the
       client-side feature layer.</li>
   <li>A <strong>direct <code>textDocument/completion</code> request</strong> sent to the
-      server (bypassing LSP4IJ entirely) also returns <strong>0 items</strong>. This
-      confirms the Nextflow Language Server itself is not providing completions.</li>
+      server at the trailing-dot cursor (bypassing LSP4IJ entirely) also returns
+      <strong>0 items</strong>. This confirms the Nextflow Language Server itself is not
+      providing named output completions for this cursor state.</li>
+  <li>The same direct debug request at line 1, char 0 returns top-level declaration
+      snippets, proving the server&rsquo;s completion endpoint is alive.</li>
   <li>The bug reproduces both in the main IDE and in the sandbox with the fixtures
       opened as a standalone project, ruling out workspace-root misconfiguration.</li>
   <li>Hover and diagnostics work for the same file, so the server IS running and
       connected. These use different code paths (server-pushed diagnostics,
       <code>textDocument/hover</code>).</li>
 </ul>
-<p><strong>Leading hypothesis:</strong> The <code>NextflowRealtimeDiagnostics</code> bridge
-sends duplicate <code>textDocument/didChange</code> notifications with
-<strong>null versions</strong> directly to the server, bypassing LSP4IJ&rsquo;s
-<code>DocumentContentSynchronizer</code>. This could corrupt the server&rsquo;s internal
-document state or version tracking, preventing it from building the semantic model
-needed for completions (while simpler features like hover still work from partial
-state).</p>
-<p><strong>Other possibilities to investigate:</strong></p>
+<p><strong>Root cause:</strong> The upstream Nextflow Language Server does not return
+completion items at a trailing-dot <code>PROCESS.out.</code> position. Its script completion
+provider requires the cursor to resolve to an AST node such as a
+<code>PropertyExpression</code>; at this incomplete member-access state the request returns
+0 items even though process outputs are declared and other LSP features work.</p>
+<p><strong>Fix:</strong> Added a narrow JetBrains-side fallback contributor for this exact
+shape. <code>NextflowOutputCompletionContributor</code> detects
+<code>PROCESS.out.</code> / <code>PROCESS.out.prefix</code>, extracts named outputs from the
+local process&rsquo;s <code>output:</code> block by reading <code>emit:</code> names, and contributes
+those items before word completion. This restores <code>FASTQC.out.</code> suggestions
+without changing general LSP completion behavior.</p>
 <ul>
-  <li>LSP4IJ may be sending <code>didOpen</code> with wrong <code>languageId</code>
-      (e.g., <code>"textmate"</code> instead of <code>"nextflow"</code>). The
-      <code>fileNamePatternMapping</code> specifies <code>languageId="nextflow"</code>,
-      and LSP4IJ&rsquo;s <code>DocumentContentSynchronizer</code> does use the mapping&rsquo;s
-      language ID when available &mdash; but this hasn&rsquo;t been verified at runtime.</li>
-  <li>Check whether <strong>any</strong> completion works (e.g., keywords at top level,
-      <code>params.</code> inside a process) vs. just <code>FASTQC.out.</code>.</li>
-  <li>The <code>completionExtended</code> setting defaults to <code>false</code> &mdash;
-      VS Code may default to <code>true</code>.</li>
+  <li><code>NextflowOutputCompletionSupport.kt</code> &mdash; detects output access at the
+      completion offset and extracts distinct <code>emit:</code> names from the matching
+      local process output block.</li>
+  <li><code>NextflowOutputCompletionContributor.kt</code> &mdash; contributes matching
+      output names and stops lower-priority word completion for this context.</li>
+  <li><code>NextflowOutputCompletionSupportTest.kt</code> &mdash; covers empty-prefix
+      <code>FASTQC.out.</code>, prefix-filtered <code>FASTQC.out.re</code>, output extraction,
+      and non-output contexts.</li>
+  <li>Removed the temporary debug <code>NextflowCompletionDebugContributor</code> and
+      <code>NextflowCompletionFeature</code> wiring.</li>
 </ul>
-<p><strong>Debug infrastructure in place:</strong></p>
-<ul>
-  <li><code>NextflowCompletionDebugContributor</code> &mdash; registered as
-      <code>completion.contributor</code> with <code>language="textmate"</code>,
-      <code>order="first"</code>. Logs request context and sends a direct
-      <code>textDocument/completion</code> request for comparison. Also tests a baseline
-      position (line 1, char 0) to check if ANY completion works.</li>
-  <li><code>NextflowCompletionFeature</code> &mdash; set on the client features via
-      <code>NextflowLanguageServerFactory</code>. Overrides <code>isSupported()</code> and
-      <code>addLookupItem()</code> with logging.</li>
-</ul>
-<p><strong>Next steps:</strong></p>
-<ol>
-  <li>Run the latest debug build and check whether the baseline position (line 1, char 0)
-      returns any completions. If 0 everywhere, the server is completely non-functional
-      for completions.</li>
-  <li>Try disabling <code>NextflowRealtimeDiagnostics</code> to see if completion starts
-      working &mdash; this would confirm the duplicate-didChange hypothesis.</li>
-  <li>If the bridge is the problem, fix it by either removing it (if LSP4IJ now handles
-      real-time sync correctly with the <code>fileNamePatternMapping</code> fix) or by
-      having it go through LSP4IJ&rsquo;s document sync rather than directly to the server.</li>
-</ol>
-<p><strong>Status:</strong> In progress.</p>
+<p><strong>Status:</strong> Fixed and manually verified. <code>FASTQC.out.</code> now offers
+<code>reports</code> and <code>zips</code>.</p>
 
 <h3>Bug: DAG Preview Crash on File Edit</h3>
 <p><strong>Symptom:</strong> <code>IncorrectOperationException: File is not writable</code>
@@ -566,15 +574,24 @@ and <code>render()</code> uses that field, so the VFS content sync was unnecessa
   <li><strong>Modified:</strong> <code>NextflowDagPreviewFile.kt</code> &mdash; removed
       <code>setContent()</code> call and <code>isWritable()</code> override to fix crash
       when DAG preview auto-refreshes.</li>
-  <li><strong>New file:</strong> <code>NextflowCompletionFeature.kt</code> &mdash; debug
-      <code>LSPCompletionFeature</code> subclass that logs <code>isSupported()</code> and
-      <code>addLookupItem()</code> calls. Wired into factory. <em>Remove when done.</em></li>
-  <li><strong>New file:</strong> <code>NextflowCompletionDebugContributor.kt</code> &mdash; debug
-      <code>CompletionContributor</code> that logs request context and sends a direct
-      <code>textDocument/completion</code> to the server. <em>Remove when done.</em></li>
-  <li><strong>Modified:</strong> <code>NextflowLanguageServerFactory.kt</code> &mdash; added
-      <code>NextflowCompletionFeature</code> to client features. <em>Revert debug part
-      when done.</em></li>
+  <li><strong>New file:</strong> <code>NextflowHoverDocumentationProvider.kt</code> &mdash;
+      targeted fallback hover documentation for schema-backed params and channel-like
+      workflow variables when the LSP hover is missing or too thin.</li>
+  <li><strong>New file:</strong> <code>NextflowSchemaHoverParser.kt</code> &mdash; extracts
+      parameter type, description, default, and enum values from
+      <code>nextflow_schema.json</code>.</li>
+  <li><strong>New file:</strong> <code>NextflowSchemaHoverParserTest.kt</code> &mdash;
+      regression coverage for schema parameter hover parsing.</li>
+  <li><strong>New file:</strong> <code>NextflowOutputCompletionSupport.kt</code> &mdash; helper
+      for detecting <code>PROCESS.out.</code> completion contexts and extracting named
+      <code>emit:</code> outputs from local process declarations.</li>
+  <li><strong>New file:</strong> <code>NextflowOutputCompletionContributor.kt</code> &mdash;
+      targeted JetBrains completion fallback for named process outputs when the upstream
+      LS returns no items at a trailing-dot cursor.</li>
+  <li><strong>New file:</strong> <code>NextflowOutputCompletionSupportTest.kt</code> &mdash;
+      regression coverage for named output completion parsing.</li>
+  <li><strong>Removed:</strong> <code>NextflowCompletionFeature.kt</code> and
+      <code>NextflowCompletionDebugContributor.kt</code> temporary debug instrumentation.</li>
 </ul>
 </section>
 
