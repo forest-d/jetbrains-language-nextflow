@@ -17,10 +17,12 @@ class NextflowLanguageServerFactory : LanguageServerFactory {
     }
 
     override fun createClientFeatures(): LSPClientFeatures {
-        return LSPClientFeatures().setConfigurationFeature(
-            LSPConfigurationFeature().apply {
-                onConfigurationChanged = LSPConfigurationFeature.OnConfigurationChanged.CALL_DID_CHANGE_CONFIGURATION
-            }
-        )
+        return LSPClientFeatures()
+            .setConfigurationFeature(
+                LSPConfigurationFeature().apply {
+                    onConfigurationChanged = LSPConfigurationFeature.OnConfigurationChanged.CALL_DID_CHANGE_CONFIGURATION
+                }
+            )
+            .setCompletionFeature(NextflowCompletionFeature())
     }
 }

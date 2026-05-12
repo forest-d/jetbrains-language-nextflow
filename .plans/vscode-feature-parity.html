@@ -458,6 +458,81 @@ command <code>nextflow.previewDag</code>. LSP4IJ resolves commands by calling
 <code>nextflow.server.previewDag</code> and renders the Mermaid diagram.</p>
 <p><strong>Status:</strong> Fixed and manually verified.</p>
 
+<h3>Bug: Code Completion Returns No LSP Items (In Progress)</h3>
+<p><strong>Symptom:</strong> Typing <code>FASTQC.out.</code> in a workflow body shows a large
+list of irrelevant items (IntelliJ word completion) instead of the process&rsquo;s
+outputs. No LSP-sourced completion items appear at all.</p>
+<p><strong>Investigation so far:</strong></p>
+<ul>
+  <li>LSP4IJ&rsquo;s <code>LSPCompletionContributor</code> runs (registered with
+      <code>language="any"</code>, <code>order="first, before wordCompletion"</code>).
+      Our <code>NextflowCompletionFeature.isSupported()</code> returns <code>true</code>,
+      confirming the server reports <code>completionProvider</code> in its capabilities.</li>
+  <li>However, <code>addLookupItem()</code> is never called &mdash; no items reach the
+      client-side feature layer.</li>
+  <li>A <strong>direct <code>textDocument/completion</code> request</strong> sent to the
+      server (bypassing LSP4IJ entirely) also returns <strong>0 items</strong>. This
+      confirms the Nextflow Language Server itself is not providing completions.</li>
+  <li>The bug reproduces both in the main IDE and in the sandbox with the fixtures
+      opened as a standalone project, ruling out workspace-root misconfiguration.</li>
+  <li>Hover and diagnostics work for the same file, so the server IS running and
+      connected. These use different code paths (server-pushed diagnostics,
+      <code>textDocument/hover</code>).</li>
+</ul>
+<p><strong>Leading hypothesis:</strong> The <code>NextflowRealtimeDiagnostics</code> bridge
+sends duplicate <code>textDocument/didChange</code> notifications with
+<strong>null versions</strong> directly to the server, bypassing LSP4IJ&rsquo;s
+<code>DocumentContentSynchronizer</code>. This could corrupt the server&rsquo;s internal
+document state or version tracking, preventing it from building the semantic model
+needed for completions (while simpler features like hover still work from partial
+state).</p>
+<p><strong>Other possibilities to investigate:</strong></p>
+<ul>
+  <li>LSP4IJ may be sending <code>didOpen</code> with wrong <code>languageId</code>
+      (e.g., <code>"textmate"</code> instead of <code>"nextflow"</code>). The
+      <code>fileNamePatternMapping</code> specifies <code>languageId="nextflow"</code>,
+      and LSP4IJ&rsquo;s <code>DocumentContentSynchronizer</code> does use the mapping&rsquo;s
+      language ID when available &mdash; but this hasn&rsquo;t been verified at runtime.</li>
+  <li>Check whether <strong>any</strong> completion works (e.g., keywords at top level,
+      <code>params.</code> inside a process) vs. just <code>FASTQC.out.</code>.</li>
+  <li>The <code>completionExtended</code> setting defaults to <code>false</code> &mdash;
+      VS Code may default to <code>true</code>.</li>
+</ul>
+<p><strong>Debug infrastructure in place:</strong></p>
+<ul>
+  <li><code>NextflowCompletionDebugContributor</code> &mdash; registered as
+      <code>completion.contributor</code> with <code>language="textmate"</code>,
+      <code>order="first"</code>. Logs request context and sends a direct
+      <code>textDocument/completion</code> request for comparison. Also tests a baseline
+      position (line 1, char 0) to check if ANY completion works.</li>
+  <li><code>NextflowCompletionFeature</code> &mdash; set on the client features via
+      <code>NextflowLanguageServerFactory</code>. Overrides <code>isSupported()</code> and
+      <code>addLookupItem()</code> with logging.</li>
+</ul>
+<p><strong>Next steps:</strong></p>
+<ol>
+  <li>Run the latest debug build and check whether the baseline position (line 1, char 0)
+      returns any completions. If 0 everywhere, the server is completely non-functional
+      for completions.</li>
+  <li>Try disabling <code>NextflowRealtimeDiagnostics</code> to see if completion starts
+      working &mdash; this would confirm the duplicate-didChange hypothesis.</li>
+  <li>If the bridge is the problem, fix it by either removing it (if LSP4IJ now handles
+      real-time sync correctly with the <code>fileNamePatternMapping</code> fix) or by
+      having it go through LSP4IJ&rsquo;s document sync rather than directly to the server.</li>
+</ol>
+<p><strong>Status:</strong> In progress.</p>
+
+<h3>Bug: DAG Preview Crash on File Edit</h3>
+<p><strong>Symptom:</strong> <code>IncorrectOperationException: File is not writable</code>
+when typing in a <code>.nf</code> file that has a DAG preview open. The auto-refresh
+timer calls <code>NextflowDagPreviewFile.updateMermaid()</code> which called
+<code>LightVirtualFile.setContent()</code>, but the file overrode
+<code>isWritable()</code> to return <code>false</code>.</p>
+<p><strong>Fix:</strong> Removed the <code>setContent()</code> call from
+<code>updateMermaid()</code> &mdash; the <code>mermaid</code> field is updated directly
+and <code>render()</code> uses that field, so the VFS content sync was unnecessary.</p>
+<p><strong>Status:</strong> Fixed.</p>
+
 <h3>Code Changes Made During Phase 2</h3>
 <ul>
   <li><strong>New file:</strong> <code>NextflowLanguageClient.kt</code> &mdash; custom
@@ -488,6 +563,18 @@ command <code>nextflow.previewDag</code>. LSP4IJ resolves commands by calling
   <li><strong>Modified:</strong> <code>NextflowSettingsConfigurable.kt</code> &mdash; tracks old
       error reporting mode before applying changes and passes <code>errorModeChanged</code>
       flag to the notifier.</li>
+  <li><strong>Modified:</strong> <code>NextflowDagPreviewFile.kt</code> &mdash; removed
+      <code>setContent()</code> call and <code>isWritable()</code> override to fix crash
+      when DAG preview auto-refreshes.</li>
+  <li><strong>New file:</strong> <code>NextflowCompletionFeature.kt</code> &mdash; debug
+      <code>LSPCompletionFeature</code> subclass that logs <code>isSupported()</code> and
+      <code>addLookupItem()</code> calls. Wired into factory. <em>Remove when done.</em></li>
+  <li><strong>New file:</strong> <code>NextflowCompletionDebugContributor.kt</code> &mdash; debug
+      <code>CompletionContributor</code> that logs request context and sends a direct
+      <code>textDocument/completion</code> to the server. <em>Remove when done.</em></li>
+  <li><strong>Modified:</strong> <code>NextflowLanguageServerFactory.kt</code> &mdash; added
+      <code>NextflowCompletionFeature</code> to client features. <em>Revert debug part
+      when done.</em></li>
 </ul>
 </section>
 

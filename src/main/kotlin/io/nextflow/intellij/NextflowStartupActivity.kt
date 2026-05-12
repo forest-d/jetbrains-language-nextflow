@@ -13,7 +13,9 @@ class NextflowStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         LOG.info("Nextflow plugin activated for project: ${project.name}")
         registerSemanticTokenProviders()
-        NextflowRealtimeDiagnostics.install(project)
+        // TODO: Disabled to test if duplicate didChange notifications break completion.
+        //  Re-enable once completion is fixed.
+        // NextflowRealtimeDiagnostics.install(project)
 
         val versionPrefix = NextflowSettings.getInstance().state.languageServerVersion.versionPrefix
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->
@@ -49,20 +51,10 @@ class NextflowStartupActivity : ProjectActivity {
             semanticTokensRegistered = true
 
             val factory = LSPSemanticTokensStructurelessFileViewProviderFactory()
-            LOG.warn("Registering semantic token FileViewProviders...")
-            LOG.warn("  Factory class: ${factory.javaClass.name}")
-            LOG.warn("  NextflowFileType: ${NextflowFileType.INSTANCE.name} (${NextflowFileType.INSTANCE.javaClass.name})")
-            LOG.warn("  NextflowTestFileType: ${NextflowTestFileType.INSTANCE.name} (${NextflowTestFileType.INSTANCE.javaClass.name})")
-            LOG.warn("  NextflowConfigFileType: ${NextflowConfigFileType.INSTANCE.name} (${NextflowConfigFileType.INSTANCE.javaClass.name})")
-
             FileTypeFileViewProviders.INSTANCE.addExplicitExtension(NextflowFileType.INSTANCE, factory)
             FileTypeFileViewProviders.INSTANCE.addExplicitExtension(NextflowTestFileType.INSTANCE, factory)
             FileTypeFileViewProviders.INSTANCE.addExplicitExtension(NextflowConfigFileType.INSTANCE, factory)
-            LOG.warn("Registered LSP semantic token FileViewProvider for Nextflow file types")
-
-            // Verify registration took effect
-            val nfProvider = FileTypeFileViewProviders.INSTANCE.forKey(NextflowFileType.INSTANCE)
-            LOG.warn("  Verify NF provider after registration: ${nfProvider?.javaClass?.name ?: "NULL"}")
+            LOG.info("Registered LSP semantic token FileViewProvider for Nextflow file types")
         }
     }
 }

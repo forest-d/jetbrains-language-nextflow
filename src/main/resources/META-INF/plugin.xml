@@ -45,9 +45,10 @@
                 id="NextflowStatus"
                 implementation="io.nextflow.intellij.NextflowStatusBarWidgetFactory"/>
 
-        <!-- DEBUG: hover diagnostics — remove once hover is working -->
-        <platform.backend.documentation.targetProvider
-                implementation="io.nextflow.intellij.lsp.NextflowHoverDebugProvider"
+        <!-- DEBUG: completion diagnostics — remove once completion is working -->
+        <completion.contributor
+                language="textmate"
+                implementationClass="io.nextflow.intellij.lsp.NextflowCompletionDebugContributor"
                 order="first"/>
 
         <!-- TextMate grammar bundle -->
