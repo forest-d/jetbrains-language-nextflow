@@ -15,8 +15,5 @@ class NextflowDagPreviewFile(
 
     fun updateMermaid(value: String) {
         mermaid = value
-        setContent(this, value, false)
     }
-
-    override fun isWritable(): Boolean = false
 }

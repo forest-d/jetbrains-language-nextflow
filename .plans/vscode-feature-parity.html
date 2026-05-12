@@ -6,7 +6,7 @@
 <meta name="feature" content="vscode-feature-parity">
 <meta name="status" content="in-progress">
 <meta name="created" content="2026-05-11">
-<meta name="updated" content="2026-05-11">
+<meta name="updated" content="2026-05-12">
 <style>
   body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
          line-height: 1.6; }
@@ -216,7 +216,7 @@ results. Fix any regressions or gaps found during verification.</p>
 
 <div class="step done" data-status="done">Syntax highlighting: open each fixture file type (.nf, .nf.test, nextflow.config) and visually verify keyword, string, comment, and operator highlighting matches VS Code output</div>
 <div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes (client-side filtering fix verified for OFF mode; remaining modes need testing)</div>
-<div class="step" data-status="pending">Hover: hover over process names, function calls, channel variables, and params; verify tooltip shows definition and any Javadoc; compare content with VS Code hover output</div>
+<div class="step done" data-status="done">Hover: hover over process names, function calls, channel variables, and params; verify tooltip shows definition and any Javadoc; compare content with VS Code hover output</div>
 <div class="step" data-status="pending">Code completion: trigger completion inside a workflow body for process names, channel methods, and params; verify extended completion surfaces symbols from modules/sample_module.nf when enabled</div>
 <div class="step" data-status="pending">Code navigation: Ctrl+click on a process call to verify go-to-definition; use Find Usages on a process name to verify find-references; test cross-file navigation to modules/</div>
 <div class="step" data-status="pending">Symbol renaming: rename a process and verify all call sites update; rename a channel variable and verify downstream references update</div>
@@ -419,23 +419,44 @@ and hover works correctly in VS Code with the same server.</p>
       (e.g., TextMate-backed files). This factory creates <code>FileViewProvider</code>s that
       produce <code>LSPSemanticTokenPsiElement</code>s, which IntelliJ&rsquo;s documentation
       framework uses to trigger hover.</li>
-  <li><strong>Root cause:</strong> LSP4IJ&rsquo;s
-      <code>LSPSemanticTokensStructurelessFileViewProviderRegistrar.registerAbstractFileTypes()</code>
-      only processes file types that are <code>instanceof AbstractFileType</code> (IntelliJ&rsquo;s
-      class for user-defined file types). Our plugin&rsquo;s <code>NextflowFileType</code>,
-      <code>NextflowTestFileType</code>, and <code>NextflowConfigFileType</code> implement
-      <code>FileType</code> directly (with <code>TextMateBackedFileType</code>), so they are
-      <strong>skipped</strong> by the registrar. Without the semantic token
-      <code>FileViewProvider</code>, Nextflow files get plain-text PSI
-      (<code>PsiPlainTextFile</code>) with no meaningful elements, and IntelliJ&rsquo;s
-      documentation framework does not trigger hover.</li>
+  <li><strong>Root cause (initial hypothesis &mdash; wrong):</strong> Initially thought LSP4IJ&rsquo;s
+      <code>LSPSemanticTokensStructurelessFileViewProviderRegistrar</code> was skipping our
+      file types because they aren&rsquo;t <code>AbstractFileType</code>. Added manual
+      <code>FileViewProvider</code> registration in <code>NextflowStartupActivity</code>. This
+      did not fix hover.</li>
+  <li><strong>Root cause (actual):</strong> The TextMate plugin claims <code>.nf</code>,
+      <code>.nf.test</code>, and <code>.config</code> extensions via the bundled
+      <code>package.json</code>, overriding our custom <code>NextflowFileType</code> registrations.
+      At runtime, files get <code>TextMateFileType</code> instead of <code>NextflowFileType</code>.
+      LSP4IJ&rsquo;s <code>fileTypeMapping</code> was registered for <code>"Nextflow"</code>, so
+      <code>LanguageServersRegistry.isFileSupported(psiFile)</code> returned <code>false</code>
+      and <code>canExecuteLSPFeature</code> returned <code>NOT</code>. This blocked hover and
+      all other client-initiated LSP features. Diagnostics still worked because the server
+      is started explicitly by our code and diagnostics are server-pushed.</li>
 </ul>
-<p><strong>Fix:</strong> Manually register <code>LSPSemanticTokensStructurelessFileViewProviderFactory</code>
-for all three Nextflow file types in <code>NextflowStartupActivity</code> via
-<code>FileTypeFileViewProviders.INSTANCE.addExplicitExtension()</code>. This is done once
-(guarded by a static flag) before the diagnostics bridge is installed, ensuring the
-semantic token <code>FileViewProvider</code> is active when files are opened.</p>
-<p><strong>Status:</strong> Fixed. Needs manual verification.</p>
+<p><strong>Fix:</strong> Replaced <code>fileTypeMapping</code> with <code>fileNamePatternMapping</code>
+in <code>plugin.xml</code>. Instead of matching by file type (unreliable due to the TextMate
+conflict), we now match by filename pattern: <code>*.nf</code>, <code>*.nf.test</code>, and
+<code>nextflow.config</code>. This bypasses file type resolution entirely and makes
+<code>isFileSupported</code> return <code>true</code>.</p>
+<p><strong>Status:</strong> Fixed and manually verified.</p>
+
+<h3>Bug: Code Lens &ldquo;Preview DAG&rdquo; Click Shows Missing Command Error</h3>
+<p><strong>Symptom:</strong> After fixing hover (which also enabled code lenses), a
+&ldquo;Preview DAG&rdquo; code lens appeared above workflows. Clicking it showed:
+&ldquo;Missing &lsquo;nextflow.previewDag&rsquo; command! It was referenced by
+&lsquo;Nextflow Language Server&rsquo;. It needs to be contributed by an IntelliJ
+plugin.&rdquo;</p>
+<p><strong>Root cause:</strong> The Nextflow LS sends <code>textDocument/codeLens</code> with
+command <code>nextflow.previewDag</code>. LSP4IJ resolves commands by calling
+<code>ActionManager.getAction(commandId)</code>. No action was registered with
+<code>id="nextflow.previewDag"</code>.</p>
+<p><strong>Fix:</strong> Created <code>NextflowDagPreviewCommandAction</code> extending
+<code>LSPCommandAction</code>, registered with <code>id="nextflow.previewDag"</code> in
+<code>plugin.xml</code>. When clicked, it delegates to
+<code>NextflowDagPreviewService.preview()</code> which maps the command to
+<code>nextflow.server.previewDag</code> and renders the Mermaid diagram.</p>
+<p><strong>Status:</strong> Fixed and manually verified.</p>
 
 <h3>Code Changes Made During Phase 2</h3>
 <ul>
@@ -451,9 +472,15 @@ semantic token <code>FileViewProvider</code> is active when files are opened.</p
       Nextflow document edits to full-text <code>textDocument/didChange</code> notifications so
       diagnostics update without Ctrl+S.</li>
   <li><strong>Modified:</strong> <code>NextflowStartupActivity.kt</code> &mdash; installs the
-      real-time diagnostics bridge per project; registers LSP4IJ&rsquo;s semantic token
-      <code>FileViewProvider</code> for Nextflow file types to enable hover and other
-      client-initiated LSP features.</li>
+      real-time diagnostics bridge per project.</li>
+  <li><strong>Modified:</strong> <code>plugin.xml</code> &mdash; replaced
+      <code>fileTypeMapping</code> with <code>fileNamePatternMapping</code> for all three
+      Nextflow file patterns (<code>*.nf</code>, <code>*.nf.test</code>,
+      <code>nextflow.config</code>), fixing LSP feature support when the TextMate plugin
+      overrides our custom file types.</li>
+  <li><strong>New file:</strong> <code>NextflowDagPreviewCommandAction.kt</code> &mdash;
+      <code>LSPCommandAction</code> registered as <code>nextflow.previewDag</code> to handle
+      code lens clicks from the language server&rsquo;s &ldquo;Preview DAG&rdquo; code lens.</li>
   <li><strong>Modified:</strong> <code>NextflowLspConfigurationNotifier.kt</code> &mdash; added
       <code>errorModeChanged</code> parameter and <code>refreshDiagnostics()</code> method that
       clears existing squiggles then re-syncs open Nextflow documents to trigger
