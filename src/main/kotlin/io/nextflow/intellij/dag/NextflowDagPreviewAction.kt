@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import io.nextflow.intellij.NextflowIcons
+import io.nextflow.intellij.lsp.isNextflowScriptPath
 
 class NextflowDagPreviewAction : AnAction(NextflowIcons.NEXTFLOW) {
     override fun actionPerformed(event: AnActionEvent) {

@@ -3,7 +3,9 @@ package io.nextflow.intellij.lsp
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
@@ -74,6 +76,11 @@ object NextflowLspRuntime {
     }
 
     fun ensureDocumentSynchronized(server: LanguageServer, file: VirtualFile): CompletableFuture<Void> {
+        // If the file is open in an editor, LSP4IJ manages its document lifecycle.
+        // Sending a duplicate didOpen causes the language server to reset document
+        // state, which clears code lenses and other computed features.
+        if (isEditorManaged(file)) return CompletableFuture.completedFuture(null)
+
         return CompletableFuture.runAsync {
             val uri = file.toLspUriString()
             val text = ApplicationManager.getApplication().runReadAction<String> {
@@ -145,6 +152,12 @@ object NextflowLspRuntime {
             true
         }
         return files
+    }
+
+    private fun isEditorManaged(file: VirtualFile): Boolean {
+        return ProjectManager.getInstance().openProjects.any { project ->
+            !project.isDisposed && FileEditorManager.getInstance(project).isFileOpen(file)
+        }
     }
 
     private const val SERVER_ID = "io.nextflow.languageServer"

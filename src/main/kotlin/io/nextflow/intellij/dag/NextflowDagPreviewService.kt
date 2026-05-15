@@ -20,11 +20,7 @@ import org.eclipse.lsp4j.CodeLens
 import org.eclipse.lsp4j.CodeLensParams
 import org.eclipse.lsp4j.Command
 import org.eclipse.lsp4j.ExecuteCommandParams
-import org.eclipse.lsp4j.Location
-import org.eclipse.lsp4j.SymbolInformation
 import org.eclipse.lsp4j.TextDocumentIdentifier
-import org.eclipse.lsp4j.WorkspaceSymbol
-import org.eclipse.lsp4j.WorkspaceSymbolParams
 import org.eclipse.lsp4j.services.LanguageServer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -86,7 +82,7 @@ object NextflowDagPreviewService {
                         .thenCompose { NextflowLspRuntime.ensureDocumentSynchronized(server, sourceFile) }
                         .thenCompose {
                             val command = Command(codeLensCommand.title, codeLensCommand.command, codeLensCommand.originalArguments)
-                            LOG.warn("NEXTFLOW_DAG execute-clicked-codelens command=${command.describe()}")
+                            LOG.debug("NEXTFLOW_DAG execute-clicked-codelens command=${command.describe()}")
                             executeDagCommand(server, command)
                         }
                 }
@@ -126,7 +122,7 @@ object NextflowDagPreviewService {
 
     fun navigateToSymbol(project: Project, sourceFile: VirtualFile, label: String) {
         val candidates = label.symbolCandidates()
-        LOG.warn("NEXTFLOW_DAG node-click label='$label' candidates=${candidates.joinToString(prefix = "[", postfix = "]")}")
+        LOG.debug("NEXTFLOW_DAG node-click label='$label' candidates=${candidates.joinToString(prefix = "[", postfix = "]")}")
         if (candidates.isEmpty()) return
 
         for (symbolName in candidates) {
@@ -138,7 +134,7 @@ object NextflowDagPreviewService {
             }
         }
 
-        LOG.warn("NEXTFLOW_DAG node-click-no-local-target label='$label'")
+        LOG.debug("NEXTFLOW_DAG node-click-no-local-target label='$label'")
     }
 
     private fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
@@ -157,10 +153,10 @@ object NextflowDagPreviewService {
             val line = prefix.count { it == '\n' }
             val lineStart = prefix.lastIndexOf('\n').let { if (it == -1) 0 else it + 1 }
             val character = match.range.first - lineStart
-            LOG.warn("NEXTFLOW_DAG node-click-local-target symbol='$symbolName' file=${file.path}:$line:$character")
+            LOG.debug("NEXTFLOW_DAG node-click-local-target symbol='$symbolName' file=${file.path}:$line:$character")
             return SourceLocation(file, line, character)
         }
-        LOG.warn("NEXTFLOW_DAG node-click-local-miss symbol='$symbolName'")
+        LOG.debug("NEXTFLOW_DAG node-click-local-miss symbol='$symbolName'")
         return null
     }
 
@@ -179,7 +175,7 @@ object NextflowDagPreviewService {
                         IllegalStateException("Language server returned no Preview DAG code lens for $uri after $CODE_LENS_ATTEMPTS direct textDocument/codeLens requests.")
                     )
 
-                LOG.warn(
+                LOG.debug(
                     "NEXTFLOW_DAG selected-lens " +
                         "caretLine=$caretLine range=${lens.range?.start?.line}:${lens.range?.start?.character} " +
                         "command=${lens.command?.describe()}"
@@ -189,12 +185,12 @@ object NextflowDagPreviewService {
                     .handle { resolved, error ->
                         if (error != null) {
                             val command = lens.command ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.", error)
-                            LOG.warn("NEXTFLOW_DAG resolve-failed-using-original command=${command.describe()}", error)
+                            LOG.debug("NEXTFLOW_DAG resolve-failed-using-original command=${command.describe()}", error)
                             DagCommand(server, command)
                         } else {
                             val command = resolved.command ?: lens.command
                                 ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.")
-                            LOG.warn("NEXTFLOW_DAG resolved-lens command=${command.describe()}")
+                            LOG.debug("NEXTFLOW_DAG resolved-lens command=${command.describe()}")
                             DagCommand(server, command)
                         }
                     }
@@ -230,7 +226,7 @@ object NextflowDagPreviewService {
         return server.workspaceService
             .executeCommand(ExecuteCommandParams(commandId, arguments))
             .thenApply {
-                LOG.warn("NEXTFLOW_DAG execute-command id=$commandId args=${arguments.joinToString(prefix = "[", postfix = "]")}")
+                LOG.debug("NEXTFLOW_DAG execute-command id=$commandId args=${arguments.joinToString(prefix = "[", postfix = "]")}")
                 val result = DagPreviewResult(it, commandId, arguments)
                 result.throwIfError()
                 result
@@ -253,19 +249,6 @@ object NextflowDagPreviewService {
             .getNotificationGroup("Nextflow")
             .createNotification(content, type)
             .notify(project)
-    }
-
-    @Suppress("DEPRECATION") // SymbolInformation fields are deprecated in LSP 3.17 but servers still return them
-    private fun SymbolInformation.toNamedLocation(): NamedLocation? {
-        val loc = location ?: return null
-        return NamedLocation(name, loc)
-    }
-
-    private fun WorkspaceSymbol.toNamedLocation(): NamedLocation? {
-        val location = location?.let {
-            if (it.isLeft) it.left else Location(it.right.uri, null)
-        } ?: return null
-        return NamedLocation(name, location)
     }
 
     private fun String.symbolCandidates(): List<String> {
@@ -298,7 +281,6 @@ object NextflowDagPreviewService {
     }
 }
 
-private data class NamedLocation(val name: String, val location: Location)
 private data class DagCommand(val server: LanguageServer, val command: Command)
 private data class SourceLocation(val file: VirtualFile, val line: Int, val character: Int)
 
@@ -332,5 +314,3 @@ data class DagPreviewResult(
         }
     }
 }
-
-fun String.isNextflowScriptPath(): Boolean = endsWith(".nf") || endsWith(".nf.test")

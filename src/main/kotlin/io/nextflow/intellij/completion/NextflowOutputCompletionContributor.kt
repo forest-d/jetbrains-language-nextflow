@@ -4,6 +4,7 @@ import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import io.nextflow.intellij.lsp.isNextflowFile
 
 class NextflowOutputCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
@@ -86,9 +87,5 @@ class NextflowOutputCompletionContributor : CompletionContributor() {
             )
         }
         prefixedResult.stopHere()
-    }
-
-    private fun isNextflowFile(name: String): Boolean {
-        return name.endsWith(".nf") || name.endsWith(".nf.test") || name == "nextflow.config"
     }
 }

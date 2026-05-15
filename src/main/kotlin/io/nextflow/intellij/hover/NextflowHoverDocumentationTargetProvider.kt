@@ -6,6 +6,7 @@ import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.documentation.DocumentationTargetProvider
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiFile
+import io.nextflow.intellij.lsp.isNextflowFile
 
 class NextflowHoverDocumentationTargetProvider : DocumentationTargetProvider {
     override fun documentationTargets(file: PsiFile, offset: Int): List<DocumentationTarget> {
@@ -20,10 +21,6 @@ class NextflowHoverDocumentationTargetProvider : DocumentationTargetProvider {
         } else {
             listOf(NextflowHoverDocumentationTarget(html))
         }
-    }
-
-    private fun isNextflowFile(name: String): Boolean {
-        return name.endsWith(".nf") || name.endsWith(".nf.test") || name == "nextflow.config"
     }
 
 }

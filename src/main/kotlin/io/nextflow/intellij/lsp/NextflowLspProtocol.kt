@@ -25,3 +25,9 @@ fun Location.toVirtualFile(): VirtualFile? {
 
 fun String.isNextflowPath(): Boolean =
     endsWith(".nf") || endsWith(".nf.test") || endsWith("nextflow.config")
+
+fun String.isNextflowScriptPath(): Boolean =
+    endsWith(".nf") || endsWith(".nf.test")
+
+fun isNextflowFile(name: String): Boolean =
+    name.endsWith(".nf") || name.endsWith(".nf.test") || name == "nextflow.config"

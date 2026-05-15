@@ -6,6 +6,7 @@ import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
+import io.nextflow.intellij.lsp.isNextflowFile
 
 class NextflowHoverDocumentationProvider : AbstractDocumentationProvider() {
     override fun generateDoc(element: PsiElement?, originalElement: PsiElement?): String? {
@@ -23,11 +24,6 @@ class NextflowHoverDocumentationProvider : AbstractDocumentationProvider() {
     override fun getQuickNavigateInfo(element: PsiElement?, originalElement: PsiElement?): String? {
         return generateDoc(element, originalElement)
     }
-
-    private fun isNextflowFile(name: String): Boolean {
-        return name.endsWith(".nf") || name.endsWith(".nf.test") || name == "nextflow.config"
-    }
-
 }
 
 object NextflowHoverSupport {

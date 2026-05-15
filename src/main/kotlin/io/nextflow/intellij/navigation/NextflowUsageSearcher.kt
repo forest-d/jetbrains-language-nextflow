@@ -8,7 +8,6 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
@@ -17,6 +16,7 @@ import com.intellij.usageView.UsageInfo
 import com.intellij.usages.Usage
 import com.intellij.usages.UsageInfo2UsageAdapter
 import com.intellij.util.Processor
+import io.nextflow.intellij.lsp.isNextflowFile
 import io.nextflow.intellij.lsp.isNextflowPath
 
 class NextflowUsageSearcher : CustomUsageSearcher() {
@@ -27,7 +27,7 @@ class NextflowUsageSearcher : CustomUsageSearcher() {
     ) {
         val context = NextflowUsageSupport.usageContext(element)
         if (context == null) {
-            LOG.warn(
+            LOG.debug(
                 "NEXTFLOW_FIND_USAGES no-context " +
                     "element=${element.javaClass.name} " +
                     "range=${element.textRange?.let { "${it.startOffset}..${it.endOffset}" }} " +
@@ -36,7 +36,7 @@ class NextflowUsageSearcher : CustomUsageSearcher() {
             return
         }
 
-        LOG.warn(
+        LOG.debug(
             "NEXTFLOW_FIND_USAGES start " +
                 "symbol='${context.symbolName}' " +
                 "origin=${context.file.path}:${context.offset} " +
@@ -45,7 +45,7 @@ class NextflowUsageSearcher : CustomUsageSearcher() {
         )
 
         val result = NextflowUsageSupport.findUsages(element.project, context.symbolName, context.file, context.offset)
-        LOG.warn(
+        LOG.debug(
             "NEXTFLOW_FIND_USAGES resolved " +
                 "symbol='${context.symbolName}' " +
                 "mode=${result.mode} " +
@@ -66,12 +66,12 @@ class NextflowUsageSearcher : CustomUsageSearcher() {
                 )
             }
             if (usageInfo == null) {
-                LOG.warn("NEXTFLOW_FIND_USAGES missing-psi file=${usage.file.path} offset=${usage.offset}")
+                LOG.debug("NEXTFLOW_FIND_USAGES missing-psi file=${usage.file.path} offset=${usage.offset}")
                 continue
             }
 
             if (!processor.process(UsageInfo2UsageAdapter(usageInfo))) {
-                LOG.warn(
+                LOG.debug(
                     "NEXTFLOW_FIND_USAGES processor-stopped " +
                         "symbol='${context.symbolName}' file=${usage.file.path} offset=${usage.offset}"
                 )
@@ -79,7 +79,7 @@ class NextflowUsageSearcher : CustomUsageSearcher() {
             }
         }
 
-        LOG.warn("NEXTFLOW_FIND_USAGES done symbol='${context.symbolName}' emitted=${result.locations.size}")
+        LOG.debug("NEXTFLOW_FIND_USAGES done symbol='${context.symbolName}' emitted=${result.locations.size}")
     }
 
     companion object {
@@ -121,7 +121,7 @@ object NextflowUsageSupport {
             val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return@runReadAction null
             val editorFile = FileDocumentManager.getInstance().getFile(editor.document) ?: return@runReadAction null
             if (editorFile != virtualFile) {
-                LOG.warn(
+                LOG.debug(
                     "NEXTFLOW_FIND_USAGES editor-context-file-mismatch " +
                         "psiFile=${virtualFile.path} editorFile=${editorFile.path}"
                 )
@@ -131,7 +131,7 @@ object NextflowUsageSupport {
             val caretOffset = editor.caretModel.offset.coerceIn(0, text.length)
             val token = identifierAt(text, caretOffset) ?: return@runReadAction null
             val context = UsageContext(virtualFile, token.offset, token.name)
-            LOG.warn(
+            LOG.debug(
                 "NEXTFLOW_FIND_USAGES editor-context " +
                     "symbol='${context.symbolName}' file=${virtualFile.path} caret=$caretOffset tokenOffset=${context.offset}"
             )
@@ -210,10 +210,6 @@ object NextflowUsageSupport {
             .findAll(text)
             .map { it.range.first }
             .toList()
-    }
-
-    fun isNextflowFile(name: String): Boolean {
-        return name.endsWith(".nf") || name.endsWith(".nf.test") || name == "nextflow.config"
     }
 
     private fun isIdentifierPart(char: Char): Boolean {

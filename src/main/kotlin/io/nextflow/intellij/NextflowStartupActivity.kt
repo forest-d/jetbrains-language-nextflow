@@ -14,9 +14,7 @@ class NextflowStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         LOG.info("Nextflow plugin activated for project: ${project.name}")
         registerSemanticTokenProviders()
-        // TODO: Disabled to test if duplicate didChange notifications break completion.
-        //  Re-enable once completion is fixed.
-        // NextflowRealtimeDiagnostics.install(project)
+        NextflowRealtimeDiagnostics.install(project)
 
         val versionPrefix = NextflowSettings.getInstance().state.languageServerVersion.versionPrefix
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->
