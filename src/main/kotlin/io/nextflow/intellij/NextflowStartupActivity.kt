@@ -6,6 +6,7 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.psi.FileTypeFileViewProviders
 import com.redhat.devtools.lsp4ij.features.semanticTokens.viewProvider.LSPSemanticTokensStructurelessFileViewProviderFactory
 import io.nextflow.intellij.lsp.LanguageServerDownloader
+import io.nextflow.intellij.lsp.NextflowLspRuntime
 import io.nextflow.intellij.lsp.NextflowRealtimeDiagnostics
 import io.nextflow.intellij.settings.NextflowSettings
 
@@ -21,6 +22,7 @@ class NextflowStartupActivity : ProjectActivity {
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->
             if (path != null) {
                 LOG.info("Language server ready: $path")
+                NextflowLspRuntime.warmUpProject(project)
             } else {
                 LOG.warn("Language server not available")
                 NextflowNotifications.warn(

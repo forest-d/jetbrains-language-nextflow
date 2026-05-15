@@ -533,9 +533,10 @@ without changing general LSP completion behavior.</p>
 <code>reports</code> and <code>zips</code>.</p>
 
 <h3>Bug: Process, Params, and Channel Completion Fall Back to Word Completion</h3>
-<p><strong>Manual test results:</strong> Completion tests 4.1, 4.2, and 4.3 fail.
+<p><strong>Manual test results:</strong> Completion tests 4.1, 4.2, and 4.3 initially failed.
 Typing <code>FA</code>, <code>params.</code>, or <code>Channel.</code> shows IntelliJ word
-completion rather than the proper Nextflow process, parameter, or channel factory items.</p>
+completion rather than the proper Nextflow process, parameter, or channel factory items.
+After the fallback fix, 4.1, 4.2, 4.3, and 4.5 pass.</p>
 <p><strong>Root cause:</strong> Same class of issue as 4.4. LSP4IJ invokes completion, but
 the upstream Nextflow LS does not provide useful items at these incomplete cursor states,
 so lower-priority word completion becomes the visible result.</p>
@@ -551,8 +552,26 @@ so lower-priority word completion becomes the visible result.</p>
   <li><code>NextflowOutputCompletionSupportTest.kt</code> now covers detection and
       extraction helpers for these fallback contexts.</li>
 </ul>
-<p><strong>Status:</strong> Fix implemented; checklist items 4.1, 4.2, and 4.3 need manual
-retest.</p>
+<p><strong>Status:</strong> Fixed and manually verified.</p>
+
+<h3>Bug: Code Navigation Does Not Work</h3>
+<p><strong>Manual test results:</strong> All section 5 navigation checks fail. Ctrl+click
+does not navigate for local process calls, included process calls, function calls, or
+include paths. Find Usages and Outline/Structure are also not working.</p>
+<p><strong>Investigation update:</strong> Removed the broken experimental
+<code>NextflowGotoDeclarationHandler</code>. It navigated to the top of the file and
+interfered with previously working hover behavior.</p>
+<p><strong>Root cause hypothesis:</strong> Manual testing showed hover and ctrl-click work
+after pressing the Nextflow tool window Refresh button. That refresh path initializes the
+workspace, synchronizes project Nextflow documents, and requests document symbols, which
+appears to prime the Nextflow LS semantic state needed by LSP4IJ navigation.</p>
+<p><strong>Fix:</strong> Added automatic startup warm-up via
+<code>NextflowLspRuntime.warmUpProject()</code>. After the language server is available,
+startup now initializes the workspace, synchronizes all project Nextflow files, and
+requests document symbols for those files. This mirrors the relevant refresh behavior
+without requiring the user to open the tool window or press Refresh manually.</p>
+<p><strong>Status:</strong> Fix implemented; needs fresh IDE load retest. Find Usages and
+Outline/Structure remain open.</p>
 
 <h3>Bug: DAG Preview Crash on File Edit</h3>
 <p><strong>Symptom:</strong> <code>IncorrectOperationException: File is not writable</code>
@@ -617,6 +636,11 @@ and <code>render()</code> uses that field, so the VFS content sync was unnecessa
       params, and Channel factories when the upstream LS returns no useful items.</li>
   <li><strong>New file:</strong> <code>NextflowOutputCompletionSupportTest.kt</code> &mdash;
       regression coverage for named output completion parsing.</li>
+  <li><strong>Modified:</strong> <code>NextflowLspRuntime.kt</code> &mdash; added
+      <code>warmUpProject()</code>, which initializes the workspace, synchronizes all
+      project Nextflow files, and requests document symbols at startup.</li>
+  <li><strong>Modified:</strong> <code>NextflowStartupActivity.kt</code> &mdash; calls
+      <code>NextflowLspRuntime.warmUpProject()</code> once the language server is ready.</li>
   <li><strong>Removed:</strong> <code>NextflowCompletionFeature.kt</code> and
       <code>NextflowCompletionDebugContributor.kt</code> temporary debug instrumentation.</li>
 </ul>

@@ -47,11 +47,11 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 4.1 | Type `FA` inside entry workflow body | `FASTQC` appears in completion list | FAIL | Word completion appears instead of proper process completions. Same class of issue as 4.4; fallback for local/included process names implemented and needs retest. |
-| 4.2 | Type `params.` inside a process script | Completion offers `input_dir`, `output_dir`, `genome`, etc. | FAIL | Word completion appears instead of proper parameter completions. Same class of issue as 4.4; fallback from `nextflow_schema.json` and `nextflow.config` implemented and needs retest. |
-| 4.3 | Type `Channel.` | Completion offers `of`, `fromPath`, `fromFilePairs`, `empty`, etc. | FAIL | Word completion appears instead of proper Channel factory completions. Same class of issue as 4.4; fallback for common Channel factories implemented and needs retest. |
+| 4.1 | Type `FA` inside entry workflow body | `FASTQC` appears in completion list | PASS | Fixed with fallback for local/included process names. |
+| 4.2 | Type `params.` inside a process script | Completion offers `input_dir`, `output_dir`, `genome`, etc. | PASS | Fixed with fallback from `nextflow_schema.json` and `nextflow.config`. |
+| 4.3 | Type `Channel.` | Completion offers `of`, `fromPath`, `fromFilePairs`, `empty`, etc. | PASS | Fixed with fallback for common Channel factories. |
 | 4.4 | Type `FASTQC.out.` after FASTQC call | Completion offers `reports`, `zips` (named outputs) | PASS | Fixed with a targeted JetBrains completion contributor for `PROCESS.out.` named outputs. Upstream LS direct completion still returns 0 at the trailing-dot cursor. |
-| 4.5 | Enable "extended completion"; type `ALI` in main.nf | `ALIGN_READS` from module appears in completions | | |
+| 4.5 | Enable "extended completion"; type `ALI` in main.nf | `ALIGN_READS` from module appears in completions | PASS | |
 | 4.6 | Disable "extended completion"; type `ALI` in main.nf | `ALIGN_READS` does NOT appear (only included symbols) | | |
 | 4.7 | Change max items to 5; trigger completion | No more than 5 items shown | | |
 
@@ -59,13 +59,13 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 5.1 | Ctrl+click `FASTQC` in entry workflow | Navigates to `process FASTQC` definition in main.nf | | |
-| 5.2 | Ctrl+click `ALIGN_READS` in PROCESS_READS workflow | Navigates to `process ALIGN_READS` in modules/sample_module.nf | | |
-| 5.3 | Ctrl+click `parseSampleId` call | Navigates to function definition | | |
-| 5.4 | Ctrl+click `'./modules/sample_module'` in include statement | Navigates to the module file | | |
-| 5.5 | Find Usages on `FASTQC` process | Shows usage in entry workflow and QC_PIPELINE workflow | | |
-| 5.6 | Find Usages on `sample_id` in FASTQC process | Shows all references within the process | | |
-| 5.7 | Verify Outline/Structure panel | Lists all processes, workflows, and functions from current file | | |
+| 5.1 | Ctrl+click `FASTQC` in entry workflow | Navigates to `process FASTQC` definition in main.nf | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
+| 5.2 | Ctrl+click `ALIGN_READS` in PROCESS_READS workflow | Navigates to `process ALIGN_READS` in modules/sample_module.nf | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
+| 5.3 | Ctrl+click `parseSampleId` call | Navigates to function definition | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
+| 5.4 | Ctrl+click `'./modules/sample_module'` in include statement | Navigates to the module file | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
+| 5.5 | Find Usages on `FASTQC` process | Shows usage in entry workflow and QC_PIPELINE workflow | FAIL | Navigation/reference features are not working. |
+| 5.6 | Find Usages on `sample_id` in FASTQC process | Shows all references within the process | FAIL | Navigation/reference features are not working. |
+| 5.7 | Verify Outline/Structure panel | Lists all processes, workflows, and functions from current file | FAIL | Navigation/symbol feature is not working. |
 
 ## 6. Symbol Renaming
 
@@ -153,8 +153,8 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Syntax Highlighting | 5 | 5 | 0 | 0 | 0 |
 | Diagnostics | 7 | 3 | 0 | 0 | 4 |
 | Hover | 6 | 6 | 0 | 0 | 0 |
-| Completion | 7 | 1 | 3 | 0 | 3 |
-| Navigation | 7 | 0 | 0 | 0 | 7 |
+| Completion | 7 | 5 | 0 | 0 | 2 |
+| Navigation | 7 | 0 | 7 | 0 | 0 |
 | Renaming | 4 | 0 | 0 | 0 | 4 |
 | Formatting | 5 | 0 | 0 | 0 | 5 |
 | DAG Preview | 6 | 0 | 0 | 0 | 6 |
@@ -163,7 +163,7 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Settings | 5 | 0 | 0 | 0 | 5 |
 | LS Management | 4 | 0 | 0 | 0 | 4 |
 | Param Schema | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **69** | **15** | **3** | **0** | **51** |
+| **Total** | **69** | **19** | **7** | **0** | **43** |
 
 ### Open Bugs
 
@@ -178,4 +178,5 @@ None.
 | `FASTQC.out.` named output completion returns no items | Fixed and manually verified. Direct `textDocument/completion` at the trailing-dot cursor returns 0 items from the Nextflow LS, so the plugin now provides a narrow JetBrains-side fallback that extracts `emit:` names from the referenced local process output block. |
 | `params.genome` hover missing | Fixed and manually verified. Added `NextflowHoverDocumentationProvider` / `NextflowHoverDocumentationTargetProvider` fallback that reads schema descriptions, types, defaults, enum values, and config defaults for `params.<name>` hovers. |
 | `reads_ch` hover too thin | Fixed and manually verified. Added hover fallback for channel-like workflow variables that shows nearest `take:` comment hint or assignment origin. |
-| Process, params, and Channel completions fall back to word completion | Fix implemented; needs manual retest. Extended the 4.4-style JetBrains completion fallback to local/included process names, `params.<name>` from schema/config, and common `Channel.<factory>` methods. |
+| Process, params, and Channel completions fall back to word completion | Fixed and manually verified. Extended the 4.4-style JetBrains completion fallback to local/included process names, `params.<name>` from schema/config, and common `Channel.<factory>` methods. |
+| Ctrl+click/navigation features do not work until manual refresh | Fix implemented; needs fresh-load retest. Removed experimental navigation/debug handlers and added automatic `NextflowLspRuntime.warmUpProject()` on startup to mirror the project-view refresh behavior that made hover and ctrl-click work. Find Usages and Outline/Structure remain open. |

@@ -4,14 +4,18 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.redhat.devtools.lsp4ij.LanguageServerManager
 import io.nextflow.intellij.settings.NextflowSettings
 import org.eclipse.lsp4j.DidChangeConfigurationParams
 import org.eclipse.lsp4j.DidChangeTextDocumentParams
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams
 import org.eclipse.lsp4j.DidOpenTextDocumentParams
+import org.eclipse.lsp4j.DocumentSymbolParams
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
+import org.eclipse.lsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.TextDocumentItem
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceFolder
@@ -26,6 +30,27 @@ object NextflowLspRuntime {
     private val LOG = Logger.getInstance(NextflowLspRuntime::class.java)
     private val initializedServers = Collections.synchronizedMap(WeakHashMap<LanguageServer, CompletableFuture<Void>>())
     private val synchronizedDocuments = Collections.synchronizedMap(WeakHashMap<LanguageServer, MutableMap<String, Int>>())
+
+    fun warmUpProject(project: Project): CompletableFuture<Void> {
+        LOG.info("Warming up Nextflow LSP project state for ${project.name}")
+        return LanguageServerManager.getInstance(project)
+            .getLanguageServer(SERVER_ID)
+            .thenCompose { item ->
+                if (item == null) {
+                    LOG.warn("Cannot warm up Nextflow LSP project state: language server item is null")
+                    return@thenCompose CompletableFuture.completedFuture<Void>(null)
+                }
+                item.initializedServer.thenCompose { server ->
+                    ensureWorkspaceInitialized(project, server)
+                        .thenCompose { synchronizeProjectDocuments(project, server) }
+                        .thenCompose { requestProjectDocumentSymbols(project, server) }
+                }
+            }
+            .exceptionally { error ->
+                LOG.warn("Failed to warm up Nextflow LSP project state", error)
+                null
+            }
+    }
 
     fun ensureWorkspaceInitialized(project: Project, server: LanguageServer): CompletableFuture<Void> {
         initializedServers[server]?.let { return it }
@@ -82,4 +107,45 @@ object NextflowLspRuntime {
 
         }
     }
+
+    private fun synchronizeProjectDocuments(project: Project, server: LanguageServer): CompletableFuture<Void> {
+        val files = nextflowFiles(project)
+        if (files.isEmpty()) return CompletableFuture.completedFuture<Void>(null)
+
+        val futures = files.map { file -> ensureDocumentSynchronized(server, file) }
+        return CompletableFuture.allOf(*futures.toTypedArray())
+    }
+
+    private fun requestProjectDocumentSymbols(project: Project, server: LanguageServer): CompletableFuture<Void> {
+        val files = nextflowFiles(project)
+        if (files.isEmpty()) return CompletableFuture.completedFuture<Void>(null)
+
+        val futures = files.map { file ->
+            val uri = file.toLspUriString()
+            server.textDocumentService
+                .documentSymbol(DocumentSymbolParams(TextDocumentIdentifier(uri)))
+                .thenAccept { result ->
+                    LOG.debug("Warmed Nextflow document symbols uri=$uri count=${result?.size ?: 0}")
+                }
+                .exceptionally { error ->
+                    LOG.debug("Failed to warm Nextflow document symbols uri=$uri", error)
+                    null
+                }
+        }
+        return CompletableFuture.allOf(*futures.toTypedArray())
+    }
+
+    private fun nextflowFiles(project: Project): List<VirtualFile> {
+        val files = mutableListOf<VirtualFile>()
+        val index = ProjectFileIndex.getInstance(project)
+        index.iterateContent { file ->
+            if (!file.isDirectory && file.path.isNextflowPath()) {
+                files.add(file)
+            }
+            true
+        }
+        return files
+    }
+
+    private const val SERVER_ID = "io.nextflow.languageServer"
 }
