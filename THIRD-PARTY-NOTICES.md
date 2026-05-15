@@ -10,6 +10,14 @@ The TextMate grammars in `src/main/resources/textmate/` are derived from the
 - License: MIT
 - Copyright: Copyright (c) Nextflow contributors
 
+## Mermaid.js
+
+The bundled `mermaid.min.js` in `src/main/resources/mermaid/` is from
+[Mermaid](https://github.com/mermaid-js/mermaid), used for DAG preview rendering.
+
+- License: MIT
+- Copyright: Copyright (c) Mermaid contributors
+
 ## Nextflow Language Server
 
 This plugin downloads and launches the
