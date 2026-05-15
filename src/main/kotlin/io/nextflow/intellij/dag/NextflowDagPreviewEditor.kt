@@ -147,8 +147,8 @@ class NextflowDagPreviewEditor(
                 .mermaid svg .node, .mermaid svg g[id^="flowchart-"] { cursor: pointer; pointer-events: all; }
                 .fallback { white-space: pre; font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
               </style>
-              <script type="module">
-                import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+              <script>${MERMAID_JS}</script>
+              <script>
                 const navigate = (label) => { $clickHandler; };
                 mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' });
                 const labelFor = (node) => {
@@ -207,5 +207,10 @@ class NextflowDagPreviewEditor(
 
     companion object {
         private val LOG = Logger.getInstance(NextflowDagPreviewEditor::class.java)
+        private val MERMAID_JS: String by lazy {
+            NextflowDagPreviewEditor::class.java.getResourceAsStream("/mermaid/mermaid.min.js")
+                ?.bufferedReader()?.readText()
+                ?: error("Bundled mermaid.min.js not found")
+        }
     }
 }

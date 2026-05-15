@@ -48,8 +48,9 @@ intellijPlatform {
         name = "Nextflow"
         version = project.version.toString()
         description = """
-            Nextflow language support for JetBrains IDEs, powered by the Nextflow Language Server.
-            Provides syntax highlighting, code completion, diagnostics, navigation, DAG preview, and more.
+            <p>Nextflow language support powered by the
+            <a href="https://github.com/nextflow-io/language-server">Nextflow Language Server</a>.
+            Requires Java 17+.</p>
         """.trimIndent()
 
         ideaVersion {
@@ -63,9 +64,7 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <ul>
-                <li>Initial release</li>
-            </ul>
+            <p>Initial release.</p>
         """.trimIndent()
     }
 
