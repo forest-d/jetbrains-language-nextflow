@@ -16,6 +16,8 @@ class NextflowDagPreviewCommandAction : LSPCommandAction() {
         val project = event.project ?: return
         val file = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
         val editor = event.getData(CommonDataKeys.EDITOR)
-        NextflowDagPreviewService.preview(project, file, editor?.caretModel?.logicalPosition?.line ?: 0, command)
+        // Keep this action minimal. LSP4IJ owns rendering the "Preview DAG" CodeLens;
+        // passing command payloads through this action has regressed CodeLens visibility.
+        NextflowDagPreviewService.preview(project, file, editor?.caretModel?.logicalPosition?.line ?: 0)
     }
 }

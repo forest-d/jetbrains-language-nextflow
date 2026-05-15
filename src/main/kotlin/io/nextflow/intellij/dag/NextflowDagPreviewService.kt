@@ -11,7 +11,6 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.redhat.devtools.lsp4ij.LanguageServerManager
-import com.redhat.devtools.lsp4ij.commands.LSPCommand
 import io.nextflow.intellij.lsp.NextflowLspRuntime
 import io.nextflow.intellij.lsp.isNextflowPath
 import io.nextflow.intellij.lsp.toLspUriString
@@ -38,7 +37,7 @@ object NextflowDagPreviewService {
     private const val CODE_LENS_RETRY_DELAY_MS = 250L
     private val LOG = Logger.getInstance(NextflowDagPreviewService::class.java)
 
-    fun preview(project: Project, sourceFile: VirtualFile, caretLine: Int, codeLensCommand: LSPCommand? = null) {
+    fun preview(project: Project, sourceFile: VirtualFile, caretLine: Int) {
         val manager = LanguageServerManager.getInstance(project)
         manager.getLanguageServer(SERVER_ID).thenAccept { item ->
             if (item == null) {
@@ -50,15 +49,7 @@ object NextflowDagPreviewService {
                 .thenCompose { server ->
                     NextflowLspRuntime.ensureWorkspaceInitialized(project, server)
                         .thenCompose { NextflowLspRuntime.ensureDocumentSynchronized(server, sourceFile) }
-                        .thenCompose {
-                            if (codeLensCommand != null) {
-                                val command = Command(codeLensCommand.title, codeLensCommand.command, codeLensCommand.originalArguments)
-                                LOG.warn("NEXTFLOW_DAG using-clicked-codelens command=${command.describe()}")
-                                CompletableFuture.completedFuture(DagCommand(server, command))
-                            } else {
-                                findDagCommand(server, sourceFile, caretLine)
-                            }
-                        }
+                        .thenCompose { findDagCommand(server, sourceFile, caretLine) }
                 }
                 .thenCompose { command -> executeDagCommand(command.server, command.command) }
                 .thenAccept { result ->
@@ -96,46 +87,20 @@ object NextflowDagPreviewService {
     }
 
     fun navigateToSymbol(project: Project, sourceFile: VirtualFile, label: String) {
-        val symbolName = label.normalizeNodeLabel()
-        LOG.warn("NEXTFLOW_DAG node-click label='$label' normalized='$symbolName'")
-        if (symbolName.isBlank()) return
+        val candidates = label.symbolCandidates()
+        LOG.warn("NEXTFLOW_DAG node-click label='$label' candidates=${candidates.joinToString(prefix = "[", postfix = "]")}")
+        if (candidates.isEmpty()) return
 
-        findLocalSymbol(project, sourceFile, symbolName)?.let { location ->
-            ApplicationManager.getApplication().invokeLater {
-                OpenFileDescriptor(project, location.file, location.line, location.character).navigate(true)
+        for (symbolName in candidates) {
+            findLocalSymbol(project, sourceFile, symbolName)?.let { location ->
+                ApplicationManager.getApplication().invokeLater {
+                    OpenFileDescriptor(project, location.file, location.line, location.character).navigate(true)
+                }
+                return
             }
-            return
         }
 
-        val manager = LanguageServerManager.getInstance(project)
-        manager.getLanguageServer(SERVER_ID).thenAccept { item ->
-            if (item == null) return@thenAccept
-
-            item.initializedServer
-                .thenCompose { server -> server.workspaceService.symbol(WorkspaceSymbolParams(symbolName)) }
-                .thenAccept { result ->
-                    val location = result?.let { either ->
-                        val symbols = if (either.isLeft) {
-                            either.left.mapNotNull { it.toNamedLocation() }
-                        } else {
-                            either.right.mapNotNull { it.toNamedLocation() }
-                        }
-                        symbols.firstOrNull { it.name.equals(symbolName, ignoreCase = true) }
-                            ?: symbols.firstOrNull { it.name.contains(symbolName, ignoreCase = true) }
-                            ?: symbols.firstOrNull()
-                    }?.location ?: return@thenAccept
-
-                    ApplicationManager.getApplication().invokeLater {
-                        val file = location.toVirtualFile() ?: return@invokeLater
-                        val position = location.range?.start ?: return@invokeLater
-                        OpenFileDescriptor(project, file, position.line, position.character).navigate(true)
-                    }
-                }
-                .exceptionally { error ->
-                    LOG.debug("Failed to navigate from DAG node '$label'", error)
-                    null
-                }
-        }
+        LOG.warn("NEXTFLOW_DAG node-click-no-local-target label='$label'")
     }
 
     private fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
@@ -265,8 +230,8 @@ object NextflowDagPreviewService {
         return NamedLocation(name, location)
     }
 
-    private fun String.normalizeNodeLabel(): String {
-        return trim()
+    private fun String.symbolCandidates(): List<String> {
+        val normalized = trim()
             .removePrefix("[")
             .removeSuffix("]")
             .removePrefix("(")
@@ -275,6 +240,15 @@ object NextflowDagPreviewService {
             .removeSuffix("\"")
             .replace(Regex("""\s+"""), " ")
             .trim()
+        if (normalized.isBlank()) return emptyList()
+
+        val tokens = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
+            .findAll(normalized)
+            .map { it.value }
+            .filterNot { it in setOf("process", "workflow", "def", "params", "Channel") }
+            .toList()
+        return (listOf(normalized) + tokens.filter { it.any(Char::isUpperCase) || it.contains('_') })
+            .distinct()
     }
 
     private fun Throwable.rootMessage(): String {
