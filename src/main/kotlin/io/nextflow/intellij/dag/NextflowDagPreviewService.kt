@@ -11,6 +11,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.redhat.devtools.lsp4ij.LanguageServerManager
+import com.redhat.devtools.lsp4ij.commands.LSPCommand
 import io.nextflow.intellij.lsp.NextflowLspRuntime
 import io.nextflow.intellij.lsp.isNextflowPath
 import io.nextflow.intellij.lsp.toLspUriString
@@ -61,6 +62,43 @@ object NextflowDagPreviewService {
                 }
                 .exceptionally { error ->
                     LOG.warn("Failed to preview Nextflow DAG", error)
+                    notify(project, "Unable to generate DAG preview: ${error.rootMessage()}", NotificationType.ERROR)
+                    null
+                }
+        }.exceptionally { error ->
+            LOG.warn("Failed to access Nextflow language server", error)
+            notify(project, "Nextflow language server is unavailable.", NotificationType.ERROR)
+            null
+        }
+    }
+
+    fun previewFromCodeLens(project: Project, sourceFile: VirtualFile, caretLine: Int, codeLensCommand: LSPCommand) {
+        val manager = LanguageServerManager.getInstance(project)
+        manager.getLanguageServer(SERVER_ID).thenAccept { item ->
+            if (item == null) {
+                notify(project, "Open a Nextflow file to start the language server.", NotificationType.WARNING)
+                return@thenAccept
+            }
+
+            item.initializedServer
+                .thenCompose { server ->
+                    NextflowLspRuntime.ensureWorkspaceInitialized(project, server)
+                        .thenCompose { NextflowLspRuntime.ensureDocumentSynchronized(server, sourceFile) }
+                        .thenCompose {
+                            val command = Command(codeLensCommand.title, codeLensCommand.command, codeLensCommand.originalArguments)
+                            LOG.warn("NEXTFLOW_DAG execute-clicked-codelens command=${command.describe()}")
+                            executeDagCommand(server, command)
+                        }
+                }
+                .thenAccept { result ->
+                    val mermaid = result.toMermaid()
+                    ApplicationManager.getApplication().invokeLater {
+                        val previewFile = NextflowDagPreviewFile(sourceFile, mermaid, caretLine, result.command, result.arguments)
+                        FileEditorManager.getInstance(project).openFile(previewFile, true)
+                    }
+                }
+                .exceptionally { error ->
+                    LOG.warn("Failed to preview Nextflow DAG from CodeLens", error)
                     notify(project, "Unable to generate DAG preview: ${error.rootMessage()}", NotificationType.ERROR)
                     null
                 }
