@@ -59,28 +59,28 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 5.1 | Ctrl+click `FASTQC` in entry workflow | Navigates to `process FASTQC` definition in main.nf | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
-| 5.2 | Ctrl+click `ALIGN_READS` in PROCESS_READS workflow | Navigates to `process ALIGN_READS` in modules/sample_module.nf | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
-| 5.3 | Ctrl+click `parseSampleId` call | Navigates to function definition | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
-| 5.4 | Ctrl+click `'./modules/sample_module'` in include statement | Navigates to the module file | FAIL | Works after manual Nextflow project refresh. Automatic startup warm-up now initializes workspace, synchronizes all Nextflow documents, and requests document symbols; needs retest after fresh IDE load. |
-| 5.5 | Find Usages on `FASTQC` process | Shows usage in entry workflow and QC_PIPELINE workflow | FAIL | Navigation/reference features are not working. |
-| 5.6 | Find Usages on `sample_id` in FASTQC process | Shows all references within the process | FAIL | Navigation/reference features are not working. |
-| 5.7 | Verify Outline/Structure panel | Lists all processes, workflows, and functions from current file | FAIL | Navigation/symbol feature is not working. |
+| 5.1 | Ctrl+click `FASTQC` in entry workflow | Navigates to `process FASTQC` definition in main.nf | PASS | Fixed by automatic startup warm-up that initializes the workspace, synchronizes all Nextflow documents, and requests document symbols. |
+| 5.2 | Ctrl+click `ALIGN_READS` in PROCESS_READS workflow | Navigates to `process ALIGN_READS` in modules/sample_module.nf | PASS | Fixed by automatic startup warm-up that initializes the workspace, synchronizes all Nextflow documents, and requests document symbols. |
+| 5.3 | Ctrl+click `parseSampleId` call | Navigates to function definition | PASS | Fixed by automatic startup warm-up that initializes the workspace, synchronizes all Nextflow documents, and requests document symbols. |
+| 5.4 | Ctrl+click `'./modules/sample_module'` in include statement | Navigates to the module file | PASS | Fixed by automatic startup warm-up that initializes the workspace, synchronizes all Nextflow documents, and requests document symbols. |
+| 5.5 | Find Usages on `FASTQC` process | Shows usage in entry workflow and QC_PIPELINE workflow | PASS | Fixed with `NextflowUsageSearcher` custom usage searcher. |
+| 5.6 | Find Usages on `sample_id` in FASTQC process | Shows all references within the process | PASS | Fixed with `NextflowUsageSearcher` custom usage searcher. |
+| 5.7 | Verify Outline/Structure panel | Lists all processes, workflows, and functions from current file | PASS | |
 
 ## 6. Symbol Renaming
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 6.1 | Rename process `FASTQC` to `QUALITY_CHECK` | All call sites in main.nf update; include statements unaffected | | |
-| 6.2 | Rename function `parseSampleId` to `extractSampleId` | Call site in entry workflow updates | | |
-| 6.3 | Rename variable `reads_ch` in entry workflow | All references within the workflow update | | |
-| 6.4 | Undo all renames | File returns to original state | | |
+| 6.1 | Rename process `FASTQC` to `QUALITY_CHECK` | All call sites in main.nf update; include statements unaffected | PASS | |
+| 6.2 | Rename function `parseSampleId` to `extractSampleId` | Call site in entry workflow updates | PASS | |
+| 6.3 | Rename variable `reads_ch` in entry workflow | All references within the workflow update | PASS | |
+| 6.4 | Undo all renames | File returns to original state | PASS | |
 
 ## 7. Formatting
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 7.1 | Reformat `main.nf` with defaults | File reformats with consistent indentation; compare output to VS Code | | |
+| 7.1 | Reformat `main.nf` with defaults | File reformats with consistent indentation; compare output to VS Code | PASS | |
 | 7.2 | Enable "Harshil alignment"; reformat | Input/output declarations align vertically | | |
 | 7.3 | Enable "Mahesh form"; reformat | Process output blocks move to end of process body | | |
 | 7.4 | Enable "Sort declarations"; reformat | Processes/workflows sorted alphabetically | | |
@@ -154,16 +154,16 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Diagnostics | 7 | 3 | 0 | 0 | 4 |
 | Hover | 6 | 6 | 0 | 0 | 0 |
 | Completion | 7 | 5 | 0 | 0 | 2 |
-| Navigation | 7 | 0 | 7 | 0 | 0 |
-| Renaming | 4 | 0 | 0 | 0 | 4 |
-| Formatting | 5 | 0 | 0 | 0 | 5 |
+| Navigation | 7 | 7 | 0 | 0 | 0 |
+| Renaming | 4 | 4 | 0 | 0 | 0 |
+| Formatting | 5 | 1 | 0 | 0 | 4 |
 | DAG Preview | 6 | 0 | 0 | 0 | 6 |
 | Project View | 7 | 0 | 0 | 0 | 7 |
 | Status Bar | 3 | 0 | 0 | 0 | 3 |
 | Settings | 5 | 0 | 0 | 0 | 5 |
 | LS Management | 4 | 0 | 0 | 0 | 4 |
 | Param Schema | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **69** | **19** | **7** | **0** | **43** |
+| **Total** | **69** | **31** | **0** | **0** | **38** |
 
 ### Open Bugs
 
@@ -179,4 +179,5 @@ None.
 | `params.genome` hover missing | Fixed and manually verified. Added `NextflowHoverDocumentationProvider` / `NextflowHoverDocumentationTargetProvider` fallback that reads schema descriptions, types, defaults, enum values, and config defaults for `params.<name>` hovers. |
 | `reads_ch` hover too thin | Fixed and manually verified. Added hover fallback for channel-like workflow variables that shows nearest `take:` comment hint or assignment origin. |
 | Process, params, and Channel completions fall back to word completion | Fixed and manually verified. Extended the 4.4-style JetBrains completion fallback to local/included process names, `params.<name>` from schema/config, and common `Channel.<factory>` methods. |
-| Ctrl+click/navigation features do not work until manual refresh | Fix implemented; needs fresh-load retest. Removed experimental navigation/debug handlers and added automatic `NextflowLspRuntime.warmUpProject()` on startup to mirror the project-view refresh behavior that made hover and ctrl-click work. Find Usages and Outline/Structure remain open. |
+| Ctrl+click/navigation features do not work until manual refresh | Fixed and manually verified. Removed experimental navigation/debug handlers and added automatic `NextflowLspRuntime.warmUpProject()` on startup to mirror the project-view refresh behavior that made hover and ctrl-click work. |
+| Find Usages does not return Nextflow references | Fixed and manually verified. Replaced target-provider/handler attempts with `NextflowUsageSearcher`, a `CustomUsageSearcher` matching LSP4IJ's usage contribution path. |

@@ -7,9 +7,13 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.redhat.devtools.lsp4ij.LanguageServerManager
+import com.redhat.devtools.lsp4ij.commands.LSPCommand
 import io.nextflow.intellij.lsp.NextflowLspRuntime
+import io.nextflow.intellij.lsp.isNextflowPath
 import io.nextflow.intellij.lsp.toLspUriString
 import io.nextflow.intellij.lsp.toVirtualFile
 import org.eclipse.lsp4j.CodeLens
@@ -34,7 +38,7 @@ object NextflowDagPreviewService {
     private const val CODE_LENS_RETRY_DELAY_MS = 250L
     private val LOG = Logger.getInstance(NextflowDagPreviewService::class.java)
 
-    fun preview(project: Project, sourceFile: VirtualFile, caretLine: Int) {
+    fun preview(project: Project, sourceFile: VirtualFile, caretLine: Int, codeLensCommand: LSPCommand? = null) {
         val manager = LanguageServerManager.getInstance(project)
         manager.getLanguageServer(SERVER_ID).thenAccept { item ->
             if (item == null) {
@@ -46,13 +50,21 @@ object NextflowDagPreviewService {
                 .thenCompose { server ->
                     NextflowLspRuntime.ensureWorkspaceInitialized(project, server)
                         .thenCompose { NextflowLspRuntime.ensureDocumentSynchronized(server, sourceFile) }
-                        .thenCompose { findDagCommand(server, sourceFile, caretLine) }
+                        .thenCompose {
+                            if (codeLensCommand != null) {
+                                val command = Command(codeLensCommand.title, codeLensCommand.command, codeLensCommand.originalArguments)
+                                LOG.warn("NEXTFLOW_DAG using-clicked-codelens command=${command.describe()}")
+                                CompletableFuture.completedFuture(DagCommand(server, command))
+                            } else {
+                                findDagCommand(server, sourceFile, caretLine)
+                            }
+                        }
                 }
                 .thenCompose { command -> executeDagCommand(command.server, command.command) }
                 .thenAccept { result ->
                     val mermaid = result.toMermaid()
                     ApplicationManager.getApplication().invokeLater {
-                        val previewFile = NextflowDagPreviewFile(sourceFile, mermaid, result.command, result.arguments)
+                        val previewFile = NextflowDagPreviewFile(sourceFile, mermaid, caretLine, result.command, result.arguments)
                         FileEditorManager.getInstance(project).openFile(previewFile, true)
                     }
                 }
@@ -75,15 +87,25 @@ object NextflowDagPreviewService {
                 CompletableFuture.failedFuture(IllegalStateException("Nextflow language server is not running."))
             } else {
                 item.initializedServer.thenCompose { server ->
-                    executeDagCommand(server, Command("Preview DAG", previewFile.command, previewFile.arguments))
+                    NextflowLspRuntime.ensureDocumentSynchronized(server, previewFile.sourceFile)
+                        .thenCompose { findDagCommand(server, previewFile.sourceFile, previewFile.caretLine) }
+                        .thenCompose { command -> executeDagCommand(command.server, command.command) }
                 }
             }
         }
     }
 
-    fun navigateToSymbol(project: Project, label: String) {
+    fun navigateToSymbol(project: Project, sourceFile: VirtualFile, label: String) {
         val symbolName = label.normalizeNodeLabel()
+        LOG.warn("NEXTFLOW_DAG node-click label='$label' normalized='$symbolName'")
         if (symbolName.isBlank()) return
+
+        findLocalSymbol(project, sourceFile, symbolName)?.let { location ->
+            ApplicationManager.getApplication().invokeLater {
+                OpenFileDescriptor(project, location.file, location.line, location.character).navigate(true)
+            }
+            return
+        }
 
         val manager = LanguageServerManager.getInstance(project)
         manager.getLanguageServer(SERVER_ID).thenAccept { item ->
@@ -116,6 +138,29 @@ object NextflowDagPreviewService {
         }
     }
 
+    private fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
+        val files = mutableListOf<VirtualFile>()
+        if (sourceFile.path.isNextflowPath()) files.add(sourceFile)
+        ProjectFileIndex.getInstance(project).iterateContent { file ->
+            if (!file.isDirectory && file.path.isNextflowPath() && file !in files) files.add(file)
+            true
+        }
+
+        val declarationRegex = Regex("""\b(?:process|workflow|def)\s+${Regex.escape(symbolName)}\b""")
+        for (file in files) {
+            val text = runCatching { VfsUtilCore.loadText(file) }.getOrNull() ?: continue
+            val match = declarationRegex.find(text) ?: continue
+            val prefix = text.substring(0, match.range.first)
+            val line = prefix.count { it == '\n' }
+            val lineStart = prefix.lastIndexOf('\n').let { if (it == -1) 0 else it + 1 }
+            val character = match.range.first - lineStart
+            LOG.warn("NEXTFLOW_DAG node-click-local-target symbol='$symbolName' file=${file.path}:$line:$character")
+            return SourceLocation(file, line, character)
+        }
+        LOG.warn("NEXTFLOW_DAG node-click-local-miss symbol='$symbolName'")
+        return null
+    }
+
     private fun findDagCommand(
         server: LanguageServer,
         sourceFile: VirtualFile,
@@ -131,17 +176,25 @@ object NextflowDagPreviewService {
                         IllegalStateException("Language server returned no Preview DAG code lens for $uri after $CODE_LENS_ATTEMPTS direct textDocument/codeLens requests.")
                     )
 
-                val command = lens.command
-                if (command != null) {
-                    CompletableFuture.completedFuture(DagCommand(server, command))
-                } else {
-                    server.textDocumentService.resolveCodeLens(lens).thenApply { resolved ->
-                        DagCommand(
-                            server,
-                            resolved.command ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.")
-                        )
+                LOG.warn(
+                    "NEXTFLOW_DAG selected-lens " +
+                        "caretLine=$caretLine range=${lens.range?.start?.line}:${lens.range?.start?.character} " +
+                        "command=${lens.command?.describe()}"
+                )
+
+                server.textDocumentService.resolveCodeLens(lens)
+                    .handle { resolved, error ->
+                        if (error != null) {
+                            val command = lens.command ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.", error)
+                            LOG.warn("NEXTFLOW_DAG resolve-failed-using-original command=${command.describe()}", error)
+                            DagCommand(server, command)
+                        } else {
+                            val command = resolved.command ?: lens.command
+                                ?: throw IllegalStateException("Preview DAG code lens did not resolve to a command.")
+                            LOG.warn("NEXTFLOW_DAG resolved-lens command=${command.describe()}")
+                            DagCommand(server, command)
+                        }
                     }
-                }
             }
     }
 
@@ -174,6 +227,7 @@ object NextflowDagPreviewService {
         return server.workspaceService
             .executeCommand(ExecuteCommandParams(commandId, arguments))
             .thenApply {
+                LOG.warn("NEXTFLOW_DAG execute-command id=$commandId args=${arguments.joinToString(prefix = "[", postfix = "]")}")
                 val result = DagPreviewResult(it, commandId, arguments)
                 result.throwIfError()
                 result
@@ -185,6 +239,10 @@ object NextflowDagPreviewService {
         return command?.command == PREVIEW_DAG_COMMAND ||
             command?.command == PREVIEW_DAG_CODE_LENS_COMMAND ||
             command?.title?.contains("Preview DAG", ignoreCase = true) == true
+    }
+
+    private fun Command.describe(): String {
+        return "title='$title' id='$command' args=${arguments.orEmpty().joinToString(prefix = "[", postfix = "]")}"
     }
 
     private fun notify(project: Project, content: String, type: NotificationType) {
@@ -230,6 +288,7 @@ object NextflowDagPreviewService {
 
 private data class NamedLocation(val name: String, val location: Location)
 private data class DagCommand(val server: LanguageServer, val command: Command)
+private data class SourceLocation(val file: VirtualFile, val line: Int, val character: Int)
 
 data class DagPreviewResult(
     val payload: Any?,

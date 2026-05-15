@@ -51,7 +51,7 @@ class NextflowDagPreviewEditor(
 
         if (browser != null) {
             navigationQuery?.addHandler { label ->
-                NextflowDagPreviewService.navigateToSymbol(project, label)
+                NextflowDagPreviewService.navigateToSymbol(project, previewFile.sourceFile, label)
                 JBCefJSQuery.Response(null)
             }
             panel.add(browser.component, BorderLayout.CENTER)
@@ -132,7 +132,8 @@ class NextflowDagPreviewEditor(
     }
 
     private fun buildHtml(mermaid: String): String {
-        val escaped = mermaid.escapeHtml()
+        val clickableMermaid = mermaid.withClickDirectives()
+        val escaped = clickableMermaid.escapeHtml()
         val clickHandler = navigationQuery?.inject("label") ?: "undefined"
         return """
             <!doctype html>
@@ -143,16 +144,38 @@ class NextflowDagPreviewEditor(
                 html, body { margin: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
                 body { padding: 16px; background: #ffffff; color: #1f2328; }
                 .mermaid { width: max-content; min-width: 100%; }
+                .mermaid svg .node, .mermaid svg g[id^="flowchart-"] { cursor: pointer; pointer-events: all; }
                 .fallback { white-space: pre; font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
               </style>
               <script type="module">
                 import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-                mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'strict' });
+                window.nextflowNavigate = (label) => { $clickHandler; };
+                mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
                 const navigate = (label) => { $clickHandler; };
+                const labelFor = (node) => {
+                  const label = node.querySelector('.nodeLabel, .label, text, span, foreignObject');
+                  return (label?.textContent || node.textContent || '').trim();
+                };
                 const bindClicks = () => {
-                  document.querySelectorAll('.mermaid svg text').forEach((node) => {
-                    node.style.cursor = 'pointer';
-                    node.addEventListener('click', () => navigate(node.textContent || ''));
+                  document.querySelectorAll('.mermaid svg .node, .mermaid svg g[id^="flowchart-"]').forEach((node) => {
+                    if (node.dataset.nextflowClickBound === 'true') return;
+                    node.dataset.nextflowClickBound = 'true';
+                    node.addEventListener('click', (event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const label = labelFor(node);
+                      if (label) navigate(label);
+                    });
+                  });
+                  document.querySelectorAll('.mermaid svg').forEach((svg) => {
+                    if (svg.dataset.nextflowSvgClickBound === 'true') return;
+                    svg.dataset.nextflowSvgClickBound = 'true';
+                    svg.addEventListener('click', (event) => {
+                      const node = event.target.closest?.('.node, g[id^="flowchart-"]');
+                      if (!node) return;
+                      const label = labelFor(node);
+                      if (label) navigate(label);
+                    }, true);
                   });
                 };
                 new MutationObserver(bindClicks).observe(document.body, { childList: true, subtree: true });
@@ -171,6 +194,38 @@ class NextflowDagPreviewEditor(
         replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
+
+    private fun String.withClickDirectives(): String {
+        val existingClickTargets = Regex("""(?m)^\s*click\s+([A-Za-z_][A-Za-z0-9_-]*)\b""")
+            .findAll(this)
+            .mapTo(mutableSetOf()) { it.groupValues[1] }
+        val declarations = Regex("""(?m)^\s*([A-Za-z_][A-Za-z0-9_-]*)\s*(?:\[[^\]]*]|\([^)]*\)|\{[^}]*}|>|$)""")
+            .findAll(this)
+            .mapNotNull { match ->
+                val id = match.groupValues[1]
+                if (id in setOf("flowchart", "graph", "subgraph", "end", "classDef", "class", "style", "linkStyle", "click")) return@mapNotNull null
+                val label = Regex("""["']([^"']+)["']""").find(match.value)?.groupValues?.get(1) ?: id
+                id to label
+            }
+            .distinctBy { it.first }
+            .filterNot { it.first in existingClickTargets }
+            .toList()
+        if (declarations.isEmpty()) return this
+        return buildString {
+            append(this@withClickDirectives.trimEnd())
+            declarations.forEach { (id, label) ->
+                append('\n')
+                append("  click ")
+                append(id)
+                append(" call nextflowNavigate(\"")
+                append(label.escapeMermaidString())
+                append("\")")
+            }
+        }
+    }
+
+    private fun String.escapeMermaidString(): String =
+        replace("\\", "\\\\").replace("\"", "\\\"")
 
     companion object {
         private val LOG = Logger.getInstance(NextflowDagPreviewEditor::class.java)

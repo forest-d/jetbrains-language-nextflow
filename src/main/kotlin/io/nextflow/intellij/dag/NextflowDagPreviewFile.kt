@@ -7,6 +7,7 @@ import com.intellij.testFramework.LightVirtualFile
 class NextflowDagPreviewFile(
     val sourceFile: VirtualFile,
     mermaid: String,
+    val caretLine: Int,
     val command: String,
     val arguments: List<Any>,
 ) : LightVirtualFile("${sourceFile.nameWithoutExtension} DAG.nfdag", PlainTextFileType.INSTANCE, mermaid) {

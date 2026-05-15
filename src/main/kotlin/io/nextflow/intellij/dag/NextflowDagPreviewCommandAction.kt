@@ -16,6 +16,6 @@ class NextflowDagPreviewCommandAction : LSPCommandAction() {
         val project = event.project ?: return
         val file = event.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
         val editor = event.getData(CommonDataKeys.EDITOR)
-        NextflowDagPreviewService.preview(project, file, editor?.caretModel?.logicalPosition?.line ?: 0)
+        NextflowDagPreviewService.preview(project, file, editor?.caretModel?.logicalPosition?.line ?: 0, command)
     }
 }

@@ -59,7 +59,7 @@ class NextflowSettings : PersistentStateComponent<NextflowSettings.State> {
             "nextflow.completion.extended" to state.completionExtended,
             "nextflow.completion.maxItems" to state.completionMaxItems,
             "nextflow.dag.direction" to "TB",
-            "nextflow.dag.verbose" to false,
+            "nextflow.dag.verbose" to true,
             "nextflow.debug" to state.debug,
             "nextflow.errorReportingMode" to state.errorReportingMode.lspValue,
             "nextflow.files.exclude" to excludes,
@@ -77,6 +77,10 @@ class NextflowSettings : PersistentStateComponent<NextflowSettings.State> {
             "completion" to mapOf(
                 "extended" to state.completionExtended,
                 "maxItems" to state.completionMaxItems,
+            ),
+            "dag" to mapOf(
+                "direction" to "TB",
+                "verbose" to true,
             ),
             "debug" to state.debug,
             "errorReportingMode" to state.errorReportingMode.lspValue,

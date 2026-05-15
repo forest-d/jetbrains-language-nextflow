@@ -60,6 +60,10 @@
                 implementation="io.nextflow.intellij.hover.NextflowHoverDocumentationTargetProvider"
                 order="first, before LSPDocumentationTargetProvider"/>
 
+        <customUsageSearcher
+                implementation="io.nextflow.intellij.navigation.NextflowUsageSearcher"
+                order="first"/>
+
         <!-- TextMate grammar bundle -->
         <textmate.bundleProvider
                 implementation="io.nextflow.intellij.NextflowTextMateBundleProvider"/>
