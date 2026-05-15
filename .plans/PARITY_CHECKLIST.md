@@ -90,12 +90,12 @@ pass/fail. Note any discrepancies in the "Notes" column.
 
 | # | Test | Expected Result | Pass | Notes |
 |---|------|-----------------|------|-------|
-| 8.1 | Right-click `main.nf` > Preview Nextflow DAG | DAG opens in a tab showing workflow structure | | |
-| 8.2 | Verify node content | DAG shows FASTQC, TRIM_READS, ALIGN_READS, SUMMARIZE_ALIGNMENT, MULTIQC, COUNT_LINES and sub-workflows | | |
-| 8.3 | Click a DAG node (e.g., FASTQC) | Editor navigates to the process definition | | |
-| 8.4 | Edit main.nf (add/remove a process call) | DAG refreshes automatically to reflect change | | |
-| 8.5 | Preview DAG for modules/sample_module.nf | DAG shows ALIGN_AND_SUMMARIZE workflow structure | | |
-| 8.6 | JCEF fallback: if JCEF unavailable | Mermaid source text is displayed instead | | |
+| 8.1 | Right-click `main.nf` > Preview Nextflow DAG | DAG opens in a tab showing workflow structure | PASS | |
+| 8.2 | Verify node content | DAG shows FASTQC, TRIM_READS, ALIGN_READS, SUMMARIZE_ALIGNMENT, MULTIQC, COUNT_LINES and sub-workflows | PASS | Main workflow shows sub-workflows as LS nodes rather than expanded internals; selected sub-workflow previews show their process structure. |
+| 8.3 | Click a DAG node (e.g., FASTQC) | Editor navigates to the process definition | PASS | Fixed with local source navigation from SVG node labels. |
+| 8.4 | Edit main.nf (add/remove a process call) | DAG refreshes automatically to reflect change | | Unknown. |
+| 8.5 | Preview DAG for modules/sample_module.nf | DAG shows ALIGN_AND_SUMMARIZE workflow structure | PASS | |
+| 8.6 | JCEF fallback: if JCEF unavailable | Mermaid source text is displayed instead | | Unknown. |
 
 ## 9. Project View (Nextflow Tool Window)
 
@@ -157,13 +157,13 @@ pass/fail. Note any discrepancies in the "Notes" column.
 | Navigation | 7 | 7 | 0 | 0 | 0 |
 | Renaming | 4 | 4 | 0 | 0 | 0 |
 | Formatting | 5 | 1 | 0 | 0 | 4 |
-| DAG Preview | 6 | 0 | 0 | 0 | 6 |
+| DAG Preview | 6 | 4 | 0 | 0 | 2 |
 | Project View | 7 | 0 | 0 | 0 | 7 |
 | Status Bar | 3 | 0 | 0 | 0 | 3 |
 | Settings | 5 | 0 | 0 | 0 | 5 |
 | LS Management | 4 | 0 | 0 | 0 | 4 |
 | Param Schema | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **69** | **31** | **0** | **0** | **38** |
+| **Total** | **69** | **35** | **0** | **0** | **34** |
 
 ### Open Bugs
 
