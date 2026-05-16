@@ -53,10 +53,6 @@ process SUMMARIZE_ALIGNMENT {
     """
 }
 
-/**
- * Sub-workflow that chains alignment and summarization.
- * Useful for testing cross-file workflow navigation.
- */
 workflow ALIGN_AND_SUMMARIZE {
     take:
     reads_ch  // tuple(sample_id, reads)

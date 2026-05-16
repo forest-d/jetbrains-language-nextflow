@@ -1,6 +1,5 @@
 package io.nextflow.intellij.dag
 
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
@@ -21,6 +20,8 @@ import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -100,7 +101,13 @@ class NextflowDagPreviewEditor(
 
     private fun render(mermaid: String) {
         textArea.text = mermaid
-        browser?.loadHTML(buildHtml(mermaid))
+        if (browser != null) {
+            val html = buildHtml(mermaid)
+            val htmlFile = Files.createTempFile("nextflow-dag-", ".html")
+            Files.writeString(htmlFile, html)
+            htmlFile.toFile().deleteOnExit()
+            browser.loadURL(htmlFile.toUri().toString())
+        }
     }
 
     override fun getComponent(): JComponent = panel
@@ -135,6 +142,7 @@ class NextflowDagPreviewEditor(
         val escaped = mermaid.escapeHtml()
         val escapedForScript = mermaid.escapeJavaScriptTemplate()
         val clickHandler = navigationQuery?.inject("label") ?: "undefined"
+        val mermaidSrc = mermaidJsFile.toUri()
         return """
             <!doctype html>
             <html>
@@ -147,7 +155,11 @@ class NextflowDagPreviewEditor(
                 .mermaid svg .node, .mermaid svg g[id^="flowchart-"] { cursor: pointer; pointer-events: all; }
                 .fallback { white-space: pre; font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
               </style>
-              <script>${MERMAID_JS}</script>
+              <script src="$mermaidSrc"></script>
+            </head>
+            <body>
+              <div id="diagram" class="mermaid"><pre class="fallback">$escaped</pre></div>
+              <noscript><pre class="fallback">$escaped</pre></noscript>
               <script>
                 const navigate = (label) => { $clickHandler; };
                 mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' });
@@ -182,14 +194,11 @@ class NextflowDagPreviewEditor(
                   document.getElementById('diagram').innerHTML = svg;
                   bindClicks();
                 }).catch((error) => {
+                  console.error('[DAG-JS] render FAILED:', error);
                   document.getElementById('diagram').innerHTML = '<pre class="fallback"></pre>';
                   document.querySelector('#diagram pre').textContent = source + '\n\n' + error;
                 });
               </script>
-            </head>
-            <body>
-              <div id="diagram" class="mermaid"><pre class="fallback">$escaped</pre></div>
-              <noscript><pre class="fallback">$escaped</pre></noscript>
             </body>
             </html>
         """.trimIndent()
@@ -207,10 +216,15 @@ class NextflowDagPreviewEditor(
 
     companion object {
         private val LOG = Logger.getInstance(NextflowDagPreviewEditor::class.java)
-        private val MERMAID_JS: String by lazy {
-            NextflowDagPreviewEditor::class.java.getResourceAsStream("/mermaid/mermaid.min.js")
-                ?.bufferedReader()?.readText()
+
+        /** Mermaid.js extracted to a temp file so JCEF can load it via file:// URL. */
+        private val mermaidJsFile: Path by lazy {
+            val stream = NextflowDagPreviewEditor::class.java.getResourceAsStream("/mermaid/mermaid.min.js")
                 ?: error("Bundled mermaid.min.js not found")
+            val file = Files.createTempFile("mermaid-", ".min.js")
+            file.toFile().deleteOnExit()
+            stream.use { Files.write(file, it.readBytes()) }
+            file
         }
     }
 }

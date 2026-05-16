@@ -7,14 +7,12 @@ import com.intellij.psi.FileTypeFileViewProviders
 import com.redhat.devtools.lsp4ij.features.semanticTokens.viewProvider.LSPSemanticTokensStructurelessFileViewProviderFactory
 import io.nextflow.intellij.lsp.LanguageServerDownloader
 import io.nextflow.intellij.lsp.NextflowLspRuntime
-import io.nextflow.intellij.lsp.NextflowRealtimeDiagnostics
 import io.nextflow.intellij.settings.NextflowSettings
 
 class NextflowStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         LOG.info("Nextflow plugin activated for project: ${project.name}")
         registerSemanticTokenProviders()
-        NextflowRealtimeDiagnostics.install(project)
 
         val versionPrefix = NextflowSettings.getInstance().state.languageServerVersion.versionPrefix
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->

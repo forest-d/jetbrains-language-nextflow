@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>v1.0.1 Critical Bug Fixes</title>
+<meta name="feature" content="v1.0.1-bugfixes">
+<meta name="status" content="in-progress">
+<meta name="created" content="2026-05-15">
+<meta name="updated" content="2026-05-15">
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+         line-height: 1.6; }
+  .phase { margin: 1.5rem 0; }
+  .step { padding: 0.25rem 0; }
+  .step::before { content: "\2610"; margin-right: 0.5rem; }
+  .step.done::before { content: "\2611"; }
+</style>
+</head>
+<body>
+
+<h1>v1.0.1 Critical Bug Fixes</h1>
+
+<section id="context">
+<h2>Context</h2>
+<p>After releasing v1.0.0 to the JetBrains Marketplace and testing on macOS, two critical bugs
+were discovered:</p>
+<ol>
+  <li><strong>Version switching breaks LSP</strong> &mdash; Changing the Nextflow language server
+      version in settings causes all language server functionality to cease permanently
+      (until IDE restart).</li>
+  <li><strong>DAG diagram not rendering</strong> &mdash; Users see raw mermaid text instead of a
+      rendered diagram. Observed on macOS; works on the dev Ubuntu machine.</li>
+</ol>
+<p>Both bugs are release-blocking for a usable v1.0.1. The version-switch bug is tackled first
+because it can be diagnosed and fixed entirely on the Linux dev machine, while the DAG bug
+requires macOS testing.</p>
+</section>
+
+<!-- ================================================================== -->
+<!-- BUG 1: VERSION SWITCHING (can be done on Linux)                    -->
+<!-- ================================================================== -->
+
+<section class="phase" id="phase-1">
+<h2>Phase 1: Diagnose version-switch LSP failure</h2>
+<p>The restart flow in <code>NextflowLspConfigurationNotifier</code> calls
+<code>manager.stop()</code> then <code>manager.start()</code> synchronously. The new server
+starts but likely never receives workspace initialization because
+<code>warmUpProject()</code> only runs during the one-time startup activity.</p>
+
+<div class="step done" data-status="done">Add logging around the stop/start sequence in
+  <code>NextflowLspConfigurationNotifier.notifyChanged()</code> &mdash; log before stop,
+  after stop, before start, after start.</div>
+
+<div class="step done" data-status="done">Check LSP4IJ's <code>LanguageServerManager.stop()</code>
+  and <code>start()</code> API to determine if they are synchronous or async, and whether
+  <code>start()</code> returns a future that can be chained.</div>
+
+<div class="step" data-status="pending">Reproduce the bug: change version in settings, observe
+  IDE logs to see whether the new server process actually starts, and whether it receives
+  the LSP <code>initialize</code> handshake from LSP4IJ.</div>
+
+<div class="step" data-status="pending">Verify hypothesis: after restart, check whether
+  <code>ensureWorkspaceInitialized()</code> is ever called for the new server instance by
+  adding logging to <code>NextflowLspRuntime</code>.</div>
+</section>
+
+<section class="phase" id="phase-2">
+<h2>Phase 2: Fix version-switch restart</h2>
+<p>Make the LSP restart robust so the new server is fully operational after a version change.</p>
+
+<div class="step" data-status="pending">Refactor <code>NextflowLspConfigurationNotifier.notifyChanged()</code>
+  to properly sequence the restart: stop the server, wait for stop to complete (or use
+  LSP4IJ's restart API if available), then start the new server.</div>
+
+<div class="step" data-status="pending">After the new server starts, call
+  <code>NextflowLspRuntime.warmUpProject(project)</code> to send workspace folders,
+  synchronize open documents, and warm up symbols &mdash; mirroring what the startup
+  activity does.</div>
+
+<div class="step" data-status="pending">Clear stale state in <code>NextflowLspRuntime</code>
+  on restart: the <code>initializedServers</code> and <code>synchronizedDocuments</code>
+  WeakHashMaps hold references keyed by the old <code>LanguageServer</code> instance. While
+  WeakHashMap will eventually GC these, consider adding an explicit
+  <code>clearState()</code> method called before restart to avoid any window of confusion.</div>
+
+<div class="step" data-status="pending">Remove temporary diagnostic logging added in Phase 1.</div>
+</section>
+
+<section class="phase" id="phase-3">
+<h2>Phase 3: Test version-switch fix</h2>
+
+<div class="step" data-status="pending">Test version switching on Linux: change version, verify
+  LSP reconnects, completions/diagnostics/hover all work with the new server version.</div>
+
+<div class="step" data-status="pending">Test switching back to the original version to verify
+  round-trip works.</div>
+
+<div class="step" data-status="pending">Test changing Java home path (also triggers restart) to
+  verify it works correctly too.</div>
+</section>
+
+<!-- ================================================================== -->
+<!-- BUG 2: DAG RENDERING (requires macOS)                              -->
+<!-- ================================================================== -->
+
+<section class="phase" id="phase-4">
+<h2>Phase 4: Diagnose DAG rendering failure on macOS</h2>
+<p>Determine exactly why the mermaid diagram doesn't render. The bundled mermaid.min.js
+(3.3 MB) is inlined into the HTML via <code>loadHTML()</code>. Three hypotheses to test:</p>
+
+<div class="step" data-status="pending">Add temporary diagnostic logging to <code>NextflowDagPreviewEditor</code>:
+  log whether <code>JBCefApp.isSupported()</code> is true, and log the size of the generated HTML
+  string before passing it to <code>loadHTML()</code>.</div>
+
+<div class="step" data-status="pending">Build a dev/sandbox version and test on macOS. Check IDE
+  logs (<code>Help &gt; Show Log</code>) for the diagnostic output. Determine which path executes:
+  JCEF browser or plain-text fallback.</div>
+
+<div class="step" data-status="pending">If JCEF is supported but the diagram still doesn't render:
+  test whether the 3.3 MB inline script exceeds <code>loadHTML()</code> / data-URI limits by
+  trying a minimal mermaid snippet with the full bundled JS. Check the JCEF dev console
+  (<code>JBCefBrowser.openDevtools()</code>) for JavaScript errors.</div>
+</section>
+
+<section class="phase" id="phase-5">
+<h2>Phase 5: Fix DAG rendering</h2>
+<p>Apply the fix based on the diagnosis from Phase 4. Likely solutions ranked by probability:</p>
+
+<div class="step" data-status="pending"><strong>If loadHTML() size limit is the issue:</strong>
+  Switch from <code>loadHTML()</code> to writing a temp HTML file and loading it via
+  <code>browser.loadURL("file://...")</code>. This avoids data-URI size limits and is how
+  most JCEF-based previews in JetBrains plugins work. Store mermaid.min.js as a separate
+  temp file referenced by a <code>&lt;script src="file://..."&gt;</code> tag.</div>
+
+<div class="step" data-status="pending"><strong>If JCEF is unsupported on macOS:</strong>
+  Add a user-visible warning when JCEF is unavailable, explaining that DAG preview requires
+  JCEF. Consider providing instructions for enabling JCEF in JBR settings, or suggest using
+  an IDE version that bundles it.</div>
+
+<div class="step" data-status="pending"><strong>If mermaid.render() throws on macOS JCEF:</strong>
+  Investigate the specific JS error. May need to adjust mermaid configuration, use a different
+  mermaid version, or work around JCEF JavaScript engine differences.</div>
+
+<div class="step" data-status="pending">Remove temporary diagnostic logging added in Phase 4.</div>
+</section>
+
+<section class="phase" id="phase-6">
+<h2>Phase 6: Test DAG fix cross-platform</h2>
+
+<div class="step" data-status="pending">Test DAG preview on macOS with the fix applied &mdash;
+  verify the diagram renders, node click navigation works, and refresh works.</div>
+
+<div class="step" data-status="pending">Test DAG preview on Linux to verify no regression.</div>
+
+<div class="step" data-status="pending">Test the JCEF-unavailable fallback path (if applicable)
+  to ensure it degrades gracefully.</div>
+</section>
+
+<!-- ================================================================== -->
+<!-- RELEASE                                                            -->
+<!-- ================================================================== -->
+
+<section class="phase" id="phase-7">
+<h2>Phase 7: Release v1.0.1</h2>
+
+<div class="step" data-status="pending">Bump version in <code>gradle.properties</code> from
+  <code>1.0.0</code> to <code>1.0.1</code>.</div>
+
+<div class="step" data-status="pending">Update <code>changeNotes</code> in
+  <code>build.gradle.kts</code> to describe the bug fixes.</div>
+
+<div class="step" data-status="pending">Build, sign, and publish to JetBrains Marketplace.</div>
+
+<div class="step" data-status="pending">Install on macOS and verify both fixes work in the
+  released plugin.</div>
+</section>
+
+<section id="notes">
+<h2>Notes</h2>
+<p><strong>2026-05-15:</strong> Plan created. Key files involved:</p>
+<ul>
+  <li><code>NextflowLspConfigurationNotifier.kt</code> &mdash; LSP stop/start on version change</li>
+  <li><code>NextflowLspRuntime.kt</code> &mdash; workspace initialization and document sync state</li>
+  <li><code>NextflowStartupActivity.kt</code> &mdash; one-time warm-up that doesn't re-run on restart</li>
+  <li><code>NextflowSettingsConfigurable.kt</code> &mdash; settings UI, triggers restart</li>
+  <li><code>NextflowDagPreviewEditor.kt</code> &mdash; DAG rendering, JCEF browser, mermaid.js inlining</li>
+</ul>
+<p>Version-switch bug is tackled first (Phases 1-3) since it can be fully diagnosed and fixed
+on Linux. DAG rendering bug (Phases 4-6) requires macOS access for testing.</p>
+<p>The bundled mermaid.min.js is 3.3 MB. Inlining this into <code>loadHTML()</code> creates a
+very large data URI which is the most likely cause of the macOS DAG failure. The version-switch
+bug is almost certainly caused by the new server never receiving workspace initialization
+after restart.</p>
+</section>
+
+</body>
+</html>

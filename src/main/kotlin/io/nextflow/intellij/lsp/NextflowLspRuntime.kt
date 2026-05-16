@@ -33,33 +33,49 @@ object NextflowLspRuntime {
     private val initializedServers = Collections.synchronizedMap(WeakHashMap<LanguageServer, CompletableFuture<Void>>())
     private val synchronizedDocuments = Collections.synchronizedMap(WeakHashMap<LanguageServer, MutableMap<String, Int>>())
 
-    fun warmUpProject(project: Project): CompletableFuture<Void> {
-        LOG.info("Warming up Nextflow LSP project state for ${project.name}")
+    fun warmUpProject(project: Project, forceDocumentSync: Boolean = false): CompletableFuture<Void> {
+        LOG.warn("WARMUP[0] warmUpProject called for ${project.name}, forceDocumentSync=$forceDocumentSync")
         return LanguageServerManager.getInstance(project)
             .getLanguageServer(SERVER_ID)
             .thenCompose { item ->
                 if (item == null) {
-                    LOG.warn("Cannot warm up Nextflow LSP project state: language server item is null")
+                    LOG.warn("WARMUP[1] language server item is NULL - warm-up aborted")
                     return@thenCompose CompletableFuture.completedFuture<Void>(null)
                 }
+                LOG.warn("WARMUP[1] language server item PRESENT, waiting for initializedServer")
                 item.initializedServer.thenCompose { server ->
+                    LOG.warn("WARMUP[2] server initialized: ${server.javaClass.name}@${System.identityHashCode(server)}")
                     ensureWorkspaceInitialized(project, server)
-                        .thenCompose { synchronizeProjectDocuments(project, server) }
-                        .thenCompose { requestProjectDocumentSymbols(project, server) }
+                        .thenCompose {
+                            LOG.warn("WARMUP[3] workspace initialized, syncing documents (force=$forceDocumentSync)")
+                            synchronizeProjectDocuments(project, server, forceDocumentSync)
+                        }
+                        .thenCompose {
+                            LOG.warn("WARMUP[4] documents synced, requesting symbols")
+                            requestProjectDocumentSymbols(project, server)
+                        }
+                        .thenRun {
+                            LOG.warn("WARMUP[5] warm-up COMPLETE")
+                        }
                 }
             }
             .exceptionally { error ->
-                LOG.warn("Failed to warm up Nextflow LSP project state", error)
+                LOG.warn("WARMUP[ERR] warm-up failed", error)
                 null
             }
     }
 
     fun ensureWorkspaceInitialized(project: Project, server: LanguageServer): CompletableFuture<Void> {
-        initializedServers[server]?.let { return it }
+        val serverId = "${server.javaClass.name}@${System.identityHashCode(server)}"
+        initializedServers[server]?.let {
+            LOG.warn("WORKSPACE already initialized for server=$serverId")
+            return it
+        }
 
+        LOG.warn("WORKSPACE initializing server=$serverId")
         val future = CompletableFuture.runAsync {
             val rootUri = project.basePath?.let { Path.of(it).toUri().toString() } ?: return@runAsync
-            LOG.debug("Initializing Nextflow LSP workspace root=$rootUri")
+            LOG.warn("WORKSPACE sending didChangeConfiguration + didChangeWorkspaceFolders root=$rootUri")
             server.workspaceService.didChangeConfiguration(DidChangeConfigurationParams(NextflowSettings.getInstance().toFlatLspSettings()))
             server.workspaceService.didChangeWorkspaceFolders(
                 DidChangeWorkspaceFoldersParams(
@@ -69,17 +85,24 @@ object NextflowLspRuntime {
                     )
                 )
             )
+            LOG.warn("WORKSPACE initialization sent for server=$serverId")
         }
 
         initializedServers[server] = future
         return future
     }
 
-    fun ensureDocumentSynchronized(server: LanguageServer, file: VirtualFile): CompletableFuture<Void> {
+    fun ensureDocumentSynchronized(server: LanguageServer, file: VirtualFile, force: Boolean = false): CompletableFuture<Void> {
         // If the file is open in an editor, LSP4IJ manages its document lifecycle.
         // Sending a duplicate didOpen causes the language server to reset document
         // state, which clears code lenses and other computed features.
-        if (isEditorManaged(file)) return CompletableFuture.completedFuture(null)
+        // After a server restart, force=true bypasses this because LSP4IJ does NOT
+        // re-send didOpen for already-open files after a disable/re-enable cycle.
+        if (!force && isEditorManaged(file)) {
+            LOG.warn("DOCSYNC skipped (editor-managed): ${file.name}")
+            return CompletableFuture.completedFuture(null)
+        }
+        LOG.warn("DOCSYNC syncing (force=$force): ${file.name}")
 
         return CompletableFuture.runAsync {
             val uri = file.toLspUriString()
@@ -115,11 +138,11 @@ object NextflowLspRuntime {
         }
     }
 
-    private fun synchronizeProjectDocuments(project: Project, server: LanguageServer): CompletableFuture<Void> {
+    private fun synchronizeProjectDocuments(project: Project, server: LanguageServer, force: Boolean = false): CompletableFuture<Void> {
         val files = nextflowFiles(project)
         if (files.isEmpty()) return CompletableFuture.completedFuture<Void>(null)
 
-        val futures = files.map { file -> ensureDocumentSynchronized(server, file) }
+        val futures = files.map { file -> ensureDocumentSynchronized(server, file, force) }
         return CompletableFuture.allOf(*futures.toTypedArray())
     }
 
@@ -160,5 +183,5 @@ object NextflowLspRuntime {
         }
     }
 
-    private const val SERVER_ID = "io.nextflow.languageServer"
+    const val SERVER_ID = "io.nextflow.languageServer"
 }

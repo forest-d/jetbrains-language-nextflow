@@ -9,20 +9,29 @@ import io.nextflow.intellij.lsp.NextflowLspRuntime
 import io.nextflow.intellij.lsp.isNextflowPath
 import org.eclipse.lsp4j.DidChangeConfigurationParams
 import org.eclipse.lsp4j.services.LanguageServer
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 object NextflowLspConfigurationNotifier {
-    private const val SERVER_ID = "io.nextflow.languageServer"
     private val LOG = Logger.getInstance(NextflowLspConfigurationNotifier::class.java)
+
+    private const val WARM_UP_DELAY_MS = 1000L
+    private const val WARM_UP_MAX_ATTEMPTS = 8
 
     fun notifyChanged(project: Project, restartRequired: Boolean, errorModeChanged: Boolean = false) {
         val manager = LanguageServerManager.getInstance(project)
         if (restartRequired) {
-            manager.stop(SERVER_ID)
-            manager.start(SERVER_ID)
+            LOG.warn("RESTART[0] Restarting Nextflow language server")
+            LOG.warn("RESTART[1] Calling manager.stop()")
+            manager.stop(NextflowLspRuntime.SERVER_ID)
+            LOG.warn("RESTART[2] stop() returned, calling manager.start()")
+            manager.start(NextflowLspRuntime.SERVER_ID)
+            LOG.warn("RESTART[3] start() returned, scheduling warm-up")
+            warmUpAfterRestart(project)
             return
         }
 
-        manager.getLanguageServer(SERVER_ID).thenAccept { item ->
+        manager.getLanguageServer(NextflowLspRuntime.SERVER_ID).thenAccept { item ->
             if (item == null) {
                 LOG.debug("Nextflow language server is not running")
                 return@thenAccept
@@ -46,12 +55,34 @@ object NextflowLspConfigurationNotifier {
         }
     }
 
+    private fun warmUpAfterRestart(project: Project, attempt: Int = 1) {
+        LOG.warn("RESTART[4] warmUpAfterRestart scheduled, attempt=$attempt, delay=${WARM_UP_DELAY_MS}ms")
+        CompletableFuture.delayedExecutor(WARM_UP_DELAY_MS, TimeUnit.MILLISECONDS).execute {
+            LOG.warn("RESTART[5] delay elapsed, calling getLanguageServer(), attempt=$attempt")
+            LanguageServerManager.getInstance(project)
+                .getLanguageServer(NextflowLspRuntime.SERVER_ID)
+                .thenAccept { item ->
+                    LOG.warn("RESTART[6] getLanguageServer() resolved: item=${if (item != null) "PRESENT" else "NULL"}, attempt=$attempt")
+                    if (item != null) {
+                        LOG.warn("RESTART[7] calling warmUpProject(forceDocumentSync=true), attempt=$attempt")
+                        NextflowLspRuntime.warmUpProject(project, forceDocumentSync = true)
+                    } else if (attempt < WARM_UP_MAX_ATTEMPTS) {
+                        LOG.warn("RESTART[7] server not ready, scheduling retry attempt=${attempt + 1}")
+                        warmUpAfterRestart(project, attempt + 1)
+                    } else {
+                        LOG.warn("RESTART[7] GAVE UP after $attempt attempts - server never became available")
+                    }
+                }
+                .exceptionally { error ->
+                    LOG.warn("RESTART[ERR] warmUpAfterRestart failed, attempt=$attempt", error)
+                    null
+                }
+        }
+    }
+
     private fun refreshDiagnostics(project: Project, server: LanguageServer) {
-        // Clear existing squiggles so the new filter mode takes effect immediately
         NextflowLanguageClient.getInstance(project)?.clearDiagnostics()
 
-        // Re-sync open Nextflow files to trigger fresh diagnostics from the LS
-        // (which will pass through the updated filter in NextflowLanguageClient)
         val openFiles = FileEditorManager.getInstance(project).openFiles
         for (file in openFiles) {
             if (file.path.isNextflowPath()) {
