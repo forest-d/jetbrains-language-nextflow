@@ -23,6 +23,26 @@ Nextflow language support powered by the [Nextflow Language Server](https://gith
 
 Output: `build/distributions/jetbrains-language-nextflow-*.zip`
 
+## Release
+
+1. Update `version` in `gradle.properties`.
+2. Update `CHANGELOG.md` and `changeNotes` in `build.gradle.kts`.
+3. Verify the release build:
+
+```bash
+./gradlew test buildPlugin verifyPlugin
+```
+
+4. Publish to JetBrains Marketplace with signing and publishing credentials set:
+
+```bash
+CERTIFICATE_CHAIN=... \
+PRIVATE_KEY=... \
+PRIVATE_KEY_PASSWORD=... \
+PUBLISH_TOKEN=... \
+./gradlew publishPlugin
+```
+
 ## License
 
 MIT. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for attribution.
