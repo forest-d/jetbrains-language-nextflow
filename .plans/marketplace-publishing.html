@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Marketplace Publishing</title>
+<meta name="feature" content="marketplace-publishing">
+<meta name="status" content="in-progress">
+<meta name="created" content="2026-05-14">
+<meta name="updated" content="2026-05-14">
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+         line-height: 1.6; }
+  .phase { margin: 1.5rem 0; }
+  .step { padding: 0.25rem 0; }
+  .step::before { content: "\2610"; margin-right: 0.5rem; }
+  .step.done::before { content: "\2611"; }
+</style>
+</head>
+<body>
+
+<h1>Marketplace Publishing</h1>
+
+<section id="context">
+<h2>Context</h2>
+<p>The Nextflow JetBrains plugin is functionally complete (core LSP features, DAG preview,
+project view, settings, status bar). Not all features have been fully verified in manual
+testing, but the plugin is stable enough for an initial public release. This plan covers
+a final code polishing round and JetBrains Marketplace publishing prep.</p>
+</section>
+
+<section class="phase" id="phase-1">
+<h2>Phase 1: Remove Dead Code and Unused Artifacts</h2>
+<p>Clean up dead code paths, unused imports, and duplicated utilities.</p>
+
+<div class="step done" data-status="done">Remove dead <code>toNamedLocation()</code> extension functions, <code>NamedLocation</code> data class, and unused <code>WorkspaceSymbolParams</code> import from <code>NextflowDagPreviewService.kt</code></div>
+<div class="step done" data-status="done">Resolve <code>NextflowRealtimeDiagnostics</code>: re-enabled in <code>NextflowStartupActivity</code> (completion fix is done, original disable reason resolved)</div>
+<div class="step done" data-status="done">Consolidate the 5 duplicated <code>isNextflowFile</code> checks and <code>isNextflowScriptPath</code> into the shared <code>NextflowLspProtocol.kt</code> utility; removed unused <code>TextRange</code> import</div>
+</section>
+
+<section class="phase" id="phase-2">
+<h2>Phase 2: Logging Cleanup</h2>
+<p>Downgrade debug-phase tracing from <code>LOG.warn</code> to <code>LOG.debug</code> and
+remove any remaining verbose artifacts.</p>
+
+<div class="step done" data-status="done">Downgrade ~10 <code>LOG.warn("NEXTFLOW_DAG ...")</code> calls to <code>LOG.debug</code> in <code>NextflowDagPreviewService.kt</code></div>
+<div class="step done" data-status="done">Downgrade ~8 <code>LOG.warn("NEXTFLOW_FIND_USAGES ...")</code> calls to <code>LOG.debug</code> in <code>NextflowUsageSearcher.kt</code></div>
+<div class="step done" data-status="done">Final scan for remaining overly verbose comments or LLM-style artifacts: none found</div>
+</section>
+
+<section class="phase" id="phase-3">
+<h2>Phase 3: Marketplace Metadata</h2>
+<p>Prepare plugin metadata, versioning, and documentation for a public listing.</p>
+
+<div class="step done" data-status="done">Bump version to 1.0.0 in <code>gradle.properties</code></div>
+<div class="step done" data-status="done">Expand the stub <code>changeNotes</code> in <code>build.gradle.kts</code> to match <code>CHANGELOG.md</code></div>
+<div class="step done" data-status="done">Review and improve plugin description for Marketplace appeal (HTML with feature list and Java 17+ requirement)</div>
+<div class="step done" data-status="done">Verify light/dark plugin icons are visually distinct (dark green #0B6E4F/white vs lighter #13A36F/dark)</div>
+<div class="step done" data-status="done">Bundle Mermaid.js (3.3 MB UMD, compresses to ~1 MB in plugin zip) instead of CDN dependency</div>
+<div class="step done" data-status="done">Finalize README and add Mermaid attribution to THIRD-PARTY-NOTICES.md</div>
+</section>
+
+<section class="phase" id="phase-4">
+<h2>Phase 4: Build Verification and Publish</h2>
+<p>Run the full build pipeline and publish to the JetBrains Marketplace.</p>
+
+<div class="step done" data-status="done">Run full test suite (<code>./gradlew test</code>) - all tests pass</div>
+<div class="step done" data-status="done">Run plugin verifier (<code>./gradlew buildPlugin verifyPlugin</code>) - compatible with all 6 IDE versions (IC-243 through IU-262)</div>
+<div class="step" data-status="pending">Publish to JetBrains Marketplace or prepare artifact for manual upload</div>
+<div class="step" data-status="pending">Close out <code>pycharm-nextflow-plugin</code> and <code>vscode-feature-parity</code> plans as done</div>
+</section>
+
+<section id="notes">
+<h2>Notes</h2>
+<p><strong>2026-05-14:</strong> Plan created. The user is satisfied with the plugin's functional
+state and wants to move towards publishing. Not all features from the vscode-feature-parity
+plan have been manually verified, but core functionality works.</p>
+</section>
+
+</body>
+</html>
