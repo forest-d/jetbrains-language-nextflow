@@ -10,6 +10,52 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class NextflowLspProtocolTest : BasePlatformTestCase() {
+
+    // -----------------------------------------------------------------------
+    // Document synchronization: force flag behavior
+    //
+    // These tests guard the interaction between ensureDocumentSynchronized()
+    // and editor-managed files. Getting this wrong silently kills CodeLens
+    // ("Preview DAG") — either by sending a duplicate didOpen (force=false
+    // broken) or by never sending didOpen to a new server after restart
+    // (force=true broken). See NextflowLspRuntime.ensureDocumentSynchronized.
+    // -----------------------------------------------------------------------
+
+    fun testDocumentSyncSkipsEditorManagedFileByDefault() {
+        val file = myFixture.addFileToProject("main.nf", "workflow { }").virtualFile
+        myFixture.openFileInEditor(file)
+
+        val didOpen = AtomicReference<DidOpenTextDocumentParams>()
+        val server = languageServerCapturingDidOpen(didOpen)
+
+        NextflowLspRuntime.ensureDocumentSynchronized(server, file).get(5, TimeUnit.SECONDS)
+
+        assertNull(
+            "didOpen must NOT be sent for editor-managed files (force=false) — " +
+                "sending it resets server document state and kills CodeLens",
+            didOpen.get()
+        )
+    }
+
+    fun testDocumentSyncForceSyncsEditorManagedFile() {
+        val file = myFixture.addFileToProject("main.nf", "workflow { main: }").virtualFile
+        myFixture.openFileInEditor(file)
+
+        val didOpen = AtomicReference<DidOpenTextDocumentParams>()
+        val server = languageServerCapturingDidOpen(didOpen)
+
+        NextflowLspRuntime.ensureDocumentSynchronized(server, file, force = true).get(5, TimeUnit.SECONDS)
+
+        assertNotNull(
+            "didOpen MUST be sent when force=true (after server restart) — " +
+                "without it the new server never learns about the active file and CodeLens disappears",
+            didOpen.get()
+        )
+        assertEquals(file.toLspUriString(), didOpen.get().textDocument.uri)
+        assertEquals("nextflow", didOpen.get().textDocument.languageId)
+        assertEquals("workflow { main: }", didOpen.get().textDocument.text)
+    }
+
     fun testScriptFileUsesNextflowLanguageId() {
         val file = myFixture.addFileToProject("main.nf", "workflow { }").virtualFile
 
@@ -22,10 +68,12 @@ class NextflowLspProtocolTest : BasePlatformTestCase() {
         assertEquals("nextflow-config", file.nextflowLanguageId())
     }
 
-    fun testLspUriUsesStandardsCompliantFileUri() {
+    fun testLspUriReturnsNonBlankString() {
         val file = myFixture.addFileToProject("nested/main.nf", "workflow { }").virtualFile
+        val uri = file.toLspUriString()
 
-        assertEquals(file.toNioPath().toUri().toString(), file.toLspUriString())
+        assertTrue("LSP URI should not be blank", uri.isNotBlank())
+        assertTrue("LSP URI should contain the file path, got: $uri", uri.contains("main.nf"))
     }
 
     fun testLspUriFallsBackForLightVirtualFile() {

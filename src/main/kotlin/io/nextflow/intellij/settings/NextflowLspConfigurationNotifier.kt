@@ -21,12 +21,8 @@ object NextflowLspConfigurationNotifier {
     fun notifyChanged(project: Project, restartRequired: Boolean, errorModeChanged: Boolean = false) {
         val manager = LanguageServerManager.getInstance(project)
         if (restartRequired) {
-            LOG.warn("RESTART[0] Restarting Nextflow language server")
-            LOG.warn("RESTART[1] Calling manager.stop()")
             manager.stop(NextflowLspRuntime.SERVER_ID)
-            LOG.warn("RESTART[2] stop() returned, calling manager.start()")
             manager.start(NextflowLspRuntime.SERVER_ID)
-            LOG.warn("RESTART[3] start() returned, scheduling warm-up")
             warmUpAfterRestart(project)
             return
         }
@@ -55,26 +51,35 @@ object NextflowLspConfigurationNotifier {
         }
     }
 
+    /**
+     * Warms up the language server after a restart with retry logic.
+     *
+     * **CRITICAL — `forceDocumentSync = true` is required here.**
+     *
+     * `stop(willDisable=true)` tears down LSP4IJ's document tracking entirely.
+     * After `start(willEnable=true)`, LSP4IJ creates a new server but does NOT
+     * re-send `didOpen` for files already open in editors. Without force=true,
+     * the new server never learns about the active file and "Preview DAG"
+     * CodeLens disappears. This was a persistent v1.0.0 regression.
+     *
+     * The retry loop handles the race between `start()` returning (synchronous)
+     * and the new server actually being available via `getLanguageServer()`.
+     */
     private fun warmUpAfterRestart(project: Project, attempt: Int = 1) {
-        LOG.warn("RESTART[4] warmUpAfterRestart scheduled, attempt=$attempt, delay=${WARM_UP_DELAY_MS}ms")
         CompletableFuture.delayedExecutor(WARM_UP_DELAY_MS, TimeUnit.MILLISECONDS).execute {
-            LOG.warn("RESTART[5] delay elapsed, calling getLanguageServer(), attempt=$attempt")
             LanguageServerManager.getInstance(project)
                 .getLanguageServer(NextflowLspRuntime.SERVER_ID)
                 .thenAccept { item ->
-                    LOG.warn("RESTART[6] getLanguageServer() resolved: item=${if (item != null) "PRESENT" else "NULL"}, attempt=$attempt")
                     if (item != null) {
-                        LOG.warn("RESTART[7] calling warmUpProject(forceDocumentSync=true), attempt=$attempt")
                         NextflowLspRuntime.warmUpProject(project, forceDocumentSync = true)
                     } else if (attempt < WARM_UP_MAX_ATTEMPTS) {
-                        LOG.warn("RESTART[7] server not ready, scheduling retry attempt=${attempt + 1}")
                         warmUpAfterRestart(project, attempt + 1)
                     } else {
-                        LOG.warn("RESTART[7] GAVE UP after $attempt attempts - server never became available")
+                        LOG.warn("Nextflow language server not available after restart ($attempt attempts)")
                     }
                 }
                 .exceptionally { error ->
-                    LOG.warn("RESTART[ERR] warmUpAfterRestart failed, attempt=$attempt", error)
+                    LOG.warn("Failed to warm up Nextflow language server after restart", error)
                     null
                 }
         }
