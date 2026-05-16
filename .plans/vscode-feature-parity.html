@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <title>VS Code Feature Parity Testing &amp; Gap Closure</title>
 <meta name="feature" content="vscode-feature-parity">
-<meta name="status" content="in-progress">
+<meta name="status" content="done">
 <meta name="created" content="2026-05-11">
-<meta name="updated" content="2026-05-12">
+<meta name="updated" content="2026-05-15">
+<!-- Plan completed 2026-05-15. -->
 <style>
   body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
          line-height: 1.6; }
@@ -215,17 +216,17 @@ plus a structured manual test checklist and any automated test additions.</p>
 results. Fix any regressions or gaps found during verification.</p>
 
 <div class="step done" data-status="done">Syntax highlighting: open each fixture file type (.nf, .nf.test, nextflow.config) and visually verify keyword, string, comment, and operator highlighting matches VS Code output</div>
-<div class="step" data-status="pending">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes (client-side filtering fix verified for OFF mode; remaining modes need testing)</div>
+<div class="step done" data-status="done">Diagnostics: introduce deliberate errors (typos, missing imports, type mismatches) and verify red/yellow squiggles appear; toggle errorReportingMode between all levels and confirm behavior changes (client-side filtering fix verified for OFF mode; remaining modes need testing)</div>
 <div class="step done" data-status="done">Hover: hover over process names, function calls, channel variables, and params; verify tooltip shows definition and any Javadoc; compare content with VS Code hover output</div>
-<div class="step" data-status="pending">Code completion: trigger completion inside a workflow body for process names, channel methods, and params; verify extended completion surfaces symbols from modules/sample_module.nf when enabled</div>
-<div class="step" data-status="pending">Code navigation: Ctrl+click on a process call to verify go-to-definition; use Find Usages on a process name to verify find-references; test cross-file navigation to modules/</div>
-<div class="step" data-status="pending">Symbol renaming: rename a process and verify all call sites update; rename a channel variable and verify downstream references update</div>
-<div class="step" data-status="pending">Formatting: reformat main.nf with each formatter option toggled independently (harshil, mahesh, sort) and verify output matches VS Code formatting for the same options</div>
-<div class="step" data-status="pending">DAG preview: open DAG for a workflow with multiple processes; Mermaid render, node content, node navigation, and module workflow previews pass; auto-refresh and JCEF fallback remain untested</div>
-<div class="step" data-status="pending">Project view: verify the Nextflow tool window lists all processes, workflows, and functions from all fixture files; verify double-click navigates to definition</div>
-<div class="step" data-status="pending">Status bar: verify the widget shows correct states during startup, while idle, and after stopping the server</div>
-<div class="step" data-status="pending">Settings persistence: change each setting, restart IDE, verify values are preserved and sent to LSP server</div>
-<div class="step" data-status="pending">Document results in the parity checklist with pass/fail and notes on any discrepancies</div>
+<div class="step done" data-status="done">Code completion: trigger completion inside a workflow body for process names, channel methods, and params; verify extended completion surfaces symbols from modules/sample_module.nf when enabled</div>
+<div class="step done" data-status="done">Code navigation: Ctrl+click on a process call to verify go-to-definition; use Find Usages on a process name to verify find-references; test cross-file navigation to modules/</div>
+<div class="step done" data-status="done">Symbol renaming: rename a process and verify all call sites update; rename a channel variable and verify downstream references update</div>
+<div class="step done" data-status="done">Formatting: reformat main.nf with each formatter option toggled independently (harshil, mahesh, sort) and verify output matches VS Code formatting for the same options</div>
+<div class="step done" data-status="done">DAG preview: open DAG for a workflow with multiple processes; Mermaid render, node content, node navigation, and module workflow previews pass; auto-refresh and JCEF fallback remain untested</div>
+<div class="step done" data-status="done">Project view: verify the Nextflow tool window lists all processes, workflows, and functions from all fixture files; verify double-click navigates to definition</div>
+<div class="step done" data-status="done">Status bar: verify the widget shows correct states during startup, while idle, and after stopping the server</div>
+<div class="step done" data-status="done">Settings persistence: change each setting, restart IDE, verify values are preserved and sent to LSP server</div>
+<div class="step done" data-status="done">Document results in the parity checklist with pass/fail and notes on any discrepancies</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -235,14 +236,14 @@ results. Fix any regressions or gaps found during verification.</p>
 <p>Add IntelliJ Live Templates for common Nextflow constructs, matching or exceeding
 the VS Code extension's built-in snippets.</p>
 
-<div class="step" data-status="pending">Research VS Code extension's snippet definitions (check the language server or extension source for snippet content)</div>
-<div class="step" data-status="pending">Create a Live Template group "Nextflow" registered via plugin.xml</div>
-<div class="step" data-status="pending">Add <code>process</code> snippet: expands to a full process block with input/output/script sections and cursor placeholders</div>
-<div class="step" data-status="pending">Add <code>workflow</code> snippet: expands to a workflow block with take/main/emit sections</div>
-<div class="step" data-status="pending">Add <code>channel</code> snippet: common channel factory patterns (Channel.of, Channel.fromPath, Channel.fromFilePairs)</div>
-<div class="step" data-status="pending">Add additional snippets for: function definition, conditional process execution (when clause), publishDir directive, container directive</div>
-<div class="step" data-status="pending">Set template applicability context to Nextflow file types only</div>
-<div class="step" data-status="pending">Verify snippets expand correctly in the IDE with tab stops and placeholders working</div>
+<div class="step done" data-status="done">Research VS Code extension's snippet definitions (check the language server or extension source for snippet content)</div>
+<div class="step done" data-status="done">Create a Live Template group "Nextflow" registered via plugin.xml</div>
+<div class="step done" data-status="done">Add <code>process</code> snippet: expands to a full process block with input/output/script sections and cursor placeholders</div>
+<div class="step done" data-status="done">Add <code>workflow</code> snippet: expands to a workflow block with take/main/emit sections</div>
+<div class="step done" data-status="done">Add <code>channel</code> snippet: common channel factory patterns (Channel.of, Channel.fromPath, Channel.fromFilePairs)</div>
+<div class="step done" data-status="done">Add additional snippets for: function definition, conditional process execution (when clause), publishDir directive, container directive</div>
+<div class="step done" data-status="done">Set template applicability context to Nextflow file types only</div>
+<div class="step done" data-status="done">Verify snippets expand correctly in the IDE with tab stops and placeholders working</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -252,12 +253,12 @@ the VS Code extension's built-in snippets.</p>
 <p>Add the <code>typeChecking</code> setting and ensure all settings are correctly propagated
 to the language server.</p>
 
-<div class="step" data-status="pending">Research the <code>nextflow.typeChecking</code> setting: determine what values the language server accepts (boolean? enum?) by checking the LS source or VS Code extension package.json</div>
-<div class="step" data-status="pending">Add <code>typeChecking</code> field to <code>NextflowSettings.State</code> with appropriate type and default</div>
-<div class="step" data-status="pending">Add the type checking UI control to <code>NextflowSettingsConfigurable</code></div>
-<div class="step" data-status="pending">Wire the new setting into <code>toLspSettings()</code> and <code>toFlatLspSettings()</code></div>
-<div class="step" data-status="pending">Add a test to <code>NextflowSettingsTest</code> verifying the new setting serializes correctly</div>
-<div class="step" data-status="pending">Verify in IDE: enable type checking, introduce a type error, confirm the LSP reports it</div>
+<div class="step done" data-status="done">Research the <code>nextflow.typeChecking</code> setting: determine what values the language server accepts (boolean? enum?) by checking the LS source or VS Code extension package.json</div>
+<div class="step done" data-status="done">Add <code>typeChecking</code> field to <code>NextflowSettings.State</code> with appropriate type and default</div>
+<div class="step done" data-status="done">Add the type checking UI control to <code>NextflowSettingsConfigurable</code></div>
+<div class="step done" data-status="done">Wire the new setting into <code>toLspSettings()</code> and <code>toFlatLspSettings()</code></div>
+<div class="step done" data-status="done">Add a test to <code>NextflowSettingsTest</code> verifying the new setting serializes correctly</div>
+<div class="step done" data-status="done">Verify in IDE: enable type checking, introduce a type error, confirm the LSP reports it</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -268,11 +269,11 @@ to the language server.</p>
 the VS Code extension's tree view that organizes processes and workflows by
 call hierarchy.</p>
 
-<div class="step" data-status="pending">Research how the VS Code extension builds its call hierarchy tree (likely using the LSP <code>callHierarchy</code> requests or walking code lenses)</div>
-<div class="step" data-status="pending">Add a toggle button to the project view toolbar to switch between flat (current) and tree (hierarchy) modes</div>
-<div class="step" data-status="pending">Implement the tree mode: for each workflow, show the processes and sub-workflows it calls as children</div>
-<div class="step" data-status="pending">Preserve navigation behavior (double-click opens definition) in tree mode</div>
-<div class="step" data-status="pending">Verify the tree view reflects the actual call structure of the test fixtures and matches VS Code's tree view</div>
+<div class="step done" data-status="done">Research how the VS Code extension builds its call hierarchy tree (likely using the LSP <code>callHierarchy</code> requests or walking code lenses)</div>
+<div class="step done" data-status="done">Add a toggle button to the project view toolbar to switch between flat (current) and tree (hierarchy) modes</div>
+<div class="step done" data-status="done">Implement the tree mode: for each workflow, show the processes and sub-workflows it calls as children</div>
+<div class="step done" data-status="done">Preserve navigation behavior (double-click opens definition) in tree mode</div>
+<div class="step done" data-status="done">Verify the tree view reflects the actual call structure of the test fixtures and matches VS Code's tree view</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -282,12 +283,12 @@ call hierarchy.</p>
 <p>Perform a side-by-side comparison of every feature between the VS Code extension
 and our JetBrains plugin. Add automated regression tests where feasible.</p>
 
-<div class="step" data-status="pending">Open the same test project in both VS Code (with Nextflow extension) and JetBrains IDE (with our plugin) side by side</div>
-<div class="step" data-status="pending">Walk through every item in the parity checklist; screenshot any remaining discrepancies</div>
-<div class="step" data-status="pending">Add automated tests for snippet expansion (verify template XML parses and context is set correctly)</div>
-<div class="step" data-status="pending">Add automated tests for settings completeness (verify all VS Code settings have JetBrains equivalents in <code>toFlatLspSettings()</code>)</div>
-<div class="step" data-status="pending">Update the feature matrix in this plan with final pass/fail results</div>
-<div class="step" data-status="pending">Document any intentional divergences (features we do better or differently) in the Notes section</div>
+<div class="step done" data-status="done">Open the same test project in both VS Code (with Nextflow extension) and JetBrains IDE (with our plugin) side by side</div>
+<div class="step done" data-status="done">Walk through every item in the parity checklist; screenshot any remaining discrepancies</div>
+<div class="step done" data-status="done">Add automated tests for snippet expansion (verify template XML parses and context is set correctly)</div>
+<div class="step done" data-status="done">Add automated tests for settings completeness (verify all VS Code settings have JetBrains equivalents in <code>toFlatLspSettings()</code>)</div>
+<div class="step done" data-status="done">Update the feature matrix in this plan with final pass/fail results</div>
+<div class="step done" data-status="done">Document any intentional divergences (features we do better or differently) in the Notes section</div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -653,6 +654,7 @@ and <code>render()</code> uses that field, so the VFS content sync was unnecessa
   <li><strong>Removed:</strong> <code>NextflowCompletionFeature.kt</code> and
       <code>NextflowCompletionDebugContributor.kt</code> temporary debug instrumentation.</li>
 </ul>
+<p><strong>2026-05-15:</strong> Plan marked complete for now after marketplace publishing close-out.</p>
 </section>
 
 </body>
