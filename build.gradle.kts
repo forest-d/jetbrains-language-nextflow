@@ -23,6 +23,7 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 
     intellijPlatform {
         intellijIdeaCommunity(providers.gradleProperty("platformVersion").get())
@@ -64,7 +65,7 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <p>Initial release.</p>
+            <p>Bug fixes for Mermaid diagram generation</p>
         """.trimIndent()
     }
 
