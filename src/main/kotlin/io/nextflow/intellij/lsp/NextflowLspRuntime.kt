@@ -44,7 +44,13 @@ object NextflowLspRuntime {
                 }
                 item.initializedServer.thenCompose { server ->
                     ensureWorkspaceInitialized(project, server)
-                        .thenCompose { synchronizeProjectDocuments(project, server, forceDocumentSync) }
+                        .thenCompose {
+                            if (forceDocumentSync) {
+                                synchronizeProjectDocuments(project, server, force = true)
+                            } else {
+                                CompletableFuture.completedFuture(null)
+                            }
+                        }
                         .thenCompose { requestProjectDocumentSymbols(project, server) }
                 }
             }
@@ -93,7 +99,7 @@ object NextflowLspRuntime {
      * about the active editor file and CodeLens disappears.
      *
      * **In short:**
-     * - Normal warm-up (startup): `force=false` — let LSP4IJ handle open files
+     * - Normal warm-up (startup): do not sync project files; let LSP4IJ handle editor files
      * - After restart (version switch): `force=true` — LSP4IJ won't re-sync them
      *
      * @see NextflowLspConfigurationNotifier.warmUpAfterRestart
