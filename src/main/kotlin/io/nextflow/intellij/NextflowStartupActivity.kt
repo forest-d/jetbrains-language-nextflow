@@ -1,6 +1,7 @@
 package io.nextflow.intellij
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.psi.FileTypeFileViewProviders
@@ -13,6 +14,11 @@ class NextflowStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         LOG.info("Nextflow plugin activated for project: ${project.name}")
         registerSemanticTokenProviders()
+
+        if (ApplicationManager.getApplication().isUnitTestMode) {
+            LOG.info("Skipping Nextflow language server startup in unit test mode")
+            return
+        }
 
         val versionPrefix = NextflowSettings.getInstance().state.languageServerVersion.versionPrefix
         LanguageServerDownloader.ensureDownloaded(versionPrefix) { path ->
