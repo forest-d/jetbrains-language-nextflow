@@ -99,7 +99,7 @@ object NextflowOutputCompletionSupport {
         if (paramsBlock.isBlank()) return emptyList()
 
         return paramsBlock.lines()
-            .mapNotNull { configParamRegex.matchEntire(it)?.groupValues?.get(1) }
+            .mapNotNull { configParamRegex.find(it)?.groupValues?.get(1) }
             .distinct()
     }
 

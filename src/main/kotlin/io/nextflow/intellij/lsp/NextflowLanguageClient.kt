@@ -38,11 +38,7 @@ class NextflowLanguageClient(project: Project) : LanguageClientImpl(project) {
     override fun publishDiagnostics(params: PublishDiagnosticsParams) {
         publishedUris.add(params.uri)
         val mode = NextflowSettings.getInstance().state.errorReportingMode
-        when (mode) {
-            ErrorReportingMode.OFF -> params.diagnostics = emptyList()
-            ErrorReportingMode.ERRORS -> params.diagnostics = params.diagnostics.filter { isError(it) }
-            else -> {} // WARNINGS and PARANOID: pass through all diagnostics
-        }
+        params.diagnostics = filterDiagnostics(params.diagnostics, mode)
         super.publishDiagnostics(params)
     }
 
@@ -63,6 +59,14 @@ class NextflowLanguageClient(project: Project) : LanguageClientImpl(project) {
 
         fun getInstance(project: Project): NextflowLanguageClient? = synchronized(instances) {
             instances[project]
+        }
+
+        internal fun filterDiagnostics(diagnostics: List<Diagnostic>, mode: ErrorReportingMode): List<Diagnostic> {
+            return when (mode) {
+                ErrorReportingMode.OFF -> emptyList()
+                ErrorReportingMode.ERRORS -> diagnostics.filter { isError(it) }
+                else -> diagnostics
+            }
         }
 
         private fun isError(diagnostic: Diagnostic): Boolean =

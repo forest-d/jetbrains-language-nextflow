@@ -251,26 +251,7 @@ object NextflowDagPreviewService {
             .notify(project)
     }
 
-    private fun String.symbolCandidates(): List<String> {
-        val normalized = trim()
-            .removePrefix("[")
-            .removeSuffix("]")
-            .removePrefix("(")
-            .removeSuffix(")")
-            .removePrefix("\"")
-            .removeSuffix("\"")
-            .replace(Regex("""\s+"""), " ")
-            .trim()
-        if (normalized.isBlank()) return emptyList()
-
-        val tokens = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
-            .findAll(normalized)
-            .map { it.value }
-            .filterNot { it in setOf("process", "workflow", "def", "params", "Channel") }
-            .toList()
-        return (listOf(normalized) + tokens.filter { it.any(Char::isUpperCase) || it.contains('_') })
-            .distinct()
-    }
+    private fun String.symbolCandidates(): List<String> = dagNodeSymbolCandidates(this)
 
     private fun Throwable.rootMessage(): String {
         var current: Throwable = this
@@ -279,6 +260,27 @@ object NextflowDagPreviewService {
         }
         return current.message ?: "unknown error"
     }
+}
+
+internal fun dagNodeSymbolCandidates(label: String): List<String> {
+    val normalized = label.trim()
+        .removePrefix("[")
+        .removeSuffix("]")
+        .removePrefix("(")
+        .removeSuffix(")")
+        .removePrefix("\"")
+        .removeSuffix("\"")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+    if (normalized.isBlank()) return emptyList()
+
+    val tokens = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
+        .findAll(normalized)
+        .map { it.value }
+        .filterNot { it in setOf("process", "workflow", "def", "params", "Channel") }
+        .toList()
+    return (listOf(normalized) + tokens.filter { it.any(Char::isUpperCase) || it.contains('_') })
+        .distinct()
 }
 
 private data class DagCommand(val server: LanguageServer, val command: Command)
