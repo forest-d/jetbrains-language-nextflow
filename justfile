@@ -26,7 +26,7 @@ build:
 
 # Run the IDE with the plugin loaded
 run:
-    ./gradlew runIde
+    ./gradlew runIde --args="/home/forest/IdeaProjects/jetbrains-language-nextflow/src/test/resources/fixtures/parity"
 
 # Verify plugin compatibility
 verify:
