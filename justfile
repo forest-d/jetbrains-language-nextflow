@@ -6,19 +6,19 @@ default:
 
 # Run all tests
 test:
-    ./gradlew test
+    ./gradlew test --no-daemon -Dorg.gradle.workers.max=1 -Dkotlin.compiler.execution.strategy=in-process
 
 # Run all tests, ignoring cache
 test-rerun:
-    ./gradlew test --rerun
+    ./gradlew test --rerun --no-daemon -Dorg.gradle.workers.max=1 -Dkotlin.compiler.execution.strategy=in-process
 
 # Run a single test class (e.g. just test-class NextflowSymbolCategoryTest)
 test-class name:
-    ./gradlew test --rerun --tests '*{{name}}'
+    ./gradlew test --rerun --tests '*{{name}}' --no-daemon -Dorg.gradle.workers.max=1 -Dkotlin.compiler.execution.strategy=in-process
 
 # Run a single test method (e.g. just test-method 'NextflowSymbolCategoryTest.categorizes process by name')
 test-method name:
-    ./gradlew test --rerun --tests '*{{name}}'
+    ./gradlew test --rerun --tests '*{{name}}' --no-daemon -Dorg.gradle.workers.max=1 -Dkotlin.compiler.execution.strategy=in-process
 
 # Build the plugin ZIP
 build:

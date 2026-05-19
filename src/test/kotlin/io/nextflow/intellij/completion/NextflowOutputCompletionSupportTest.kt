@@ -94,4 +94,39 @@ class NextflowOutputCompletionSupportTest {
 
         assertEquals(listOf("FASTQC", "ALIGN_READS", "SUMMARIZE_ALIGNMENT"), names)
     }
+
+    @Test
+    fun `does not infer outputs for included process names from include statements alone`() {
+        val text = """
+            include { ALIGN_READS } from './modules/sample_module'
+
+            workflow {
+                ALIGN_READS.out.
+            }
+        """.trimIndent()
+
+        val outputs = NextflowOutputCompletionSupport.findOutputs(text, "ALIGN_READS")
+
+        assertEquals(emptyList(), outputs)
+    }
+
+    @Test
+    fun `extracts outputs only when the process definition is present in the current text`() {
+        val text = """
+            include { ALIGN_READS } from './modules/sample_module'
+
+            process ALIGN_READS {
+                output:
+                path("*.bam"), emit: bam
+                path("*.bai"), emit: index
+
+                script:
+                "align"
+            }
+        """.trimIndent()
+
+        val outputs = NextflowOutputCompletionSupport.findOutputs(text, "ALIGN_READS")
+
+        assertEquals(listOf("bam", "index"), outputs)
+    }
 }

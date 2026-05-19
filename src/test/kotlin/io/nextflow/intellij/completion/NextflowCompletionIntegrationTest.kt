@@ -211,30 +211,4 @@ class NextflowCompletionIntegrationTest : BasePlatformTestCase() {
         }
     }
 
-    fun testProcessNameCompletionIncludesImportedProcesses() {
-        myFixture.configureByText(
-            "main.nf",
-            """
-            include { ALIGN_READS } from './modules/sample_module'
-            include { SUMMARIZE_ALIGNMENT } from './modules/sample_module'
-
-            process FASTQC {
-                script:
-                "fastqc"
-            }
-
-            workflow {
-                <caret>
-            }
-            """.trimIndent(),
-        )
-
-        myFixture.completeBasic()
-        val lookupStrings = myFixture.lookupElementStrings
-
-        assertNotNull("completion should return process names", lookupStrings)
-        assertTrue("should include local process 'FASTQC'", "FASTQC" in lookupStrings!!)
-        assertTrue("should include included process 'ALIGN_READS'", "ALIGN_READS" in lookupStrings)
-        assertTrue("should include included process 'SUMMARIZE_ALIGNMENT'", "SUMMARIZE_ALIGNMENT" in lookupStrings)
-    }
 }
