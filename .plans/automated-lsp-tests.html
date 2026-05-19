@@ -54,11 +54,11 @@ and mock-server tests (Proxy-based LanguageServer mocks).</p>
 <section class="phase" id="phase-3">
 <h2>Phase 3: Mock-Server Integration Tests</h2>
 <p>Expand the Proxy mock pattern from NextflowLspProtocolTest to test LSP request/response flows.</p>
-<div class="step" data-status="pending">Build reusable MockLanguageServer returning canned codeLens, documentSymbol, workspace/symbol, executeCommand responses</div>
-<div class="step" data-status="pending">Test CodeLens retrieval — mock returns Preview DAG lens, verify findDagCommand selects closest to caret</div>
-<div class="step" data-status="pending">Test CodeLens retry — mock returns empty then lens on attempt N, verify retry logic</div>
-<div class="step" data-status="pending">Test DAG command execution — mock returns mermaid string, verify DagPreviewResult</div>
-<div class="step" data-status="pending">Test findLocalSymbol — add fixture files, verify navigation resolves to correct file/line/character</div>
+<div class="step done" data-status="done">Build reusable MockLanguageServer returning canned codeLens, resolveCodeLens, executeCommand responses</div>
+<div class="step done" data-status="done">Test CodeLens retrieval — mock returns Preview DAG lens, verify findDagCommand selects closest to caret (+ ignores non-DAG lenses, falls back on resolve failure)</div>
+<div class="step done" data-status="done">Test CodeLens retry — mock returns empty then lens on attempt N, verify retry logic (+ fails after 8 attempts)</div>
+<div class="step done" data-status="done">Test DAG command execution — 14 DagPreviewResult tests (toMermaid, errorMessage) + 4 executeDagCommand tests (command mapping, argument passthrough)</div>
+<div class="step done" data-status="done">Test findLocalSymbol — 5 tests: process/workflow/def in same and different files, correct line/character, null for missing symbols</div>
 </section>
 
 <section class="phase" id="phase-4">

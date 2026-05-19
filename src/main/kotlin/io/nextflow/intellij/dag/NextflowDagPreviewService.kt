@@ -137,7 +137,7 @@ object NextflowDagPreviewService {
         LOG.debug("NEXTFLOW_DAG node-click-no-local-target label='$label'")
     }
 
-    private fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
+    internal fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
         val files = mutableListOf<VirtualFile>()
         if (sourceFile.path.isNextflowPath()) files.add(sourceFile)
         ProjectFileIndex.getInstance(project).iterateContent { file ->
@@ -160,7 +160,7 @@ object NextflowDagPreviewService {
         return null
     }
 
-    private fun findDagCommand(
+    internal fun findDagCommand(
         server: LanguageServer,
         sourceFile: VirtualFile,
         caretLine: Int,
@@ -217,7 +217,7 @@ object NextflowDagPreviewService {
             }
     }
 
-    private fun executeDagCommand(server: LanguageServer, command: Command): CompletableFuture<DagPreviewResult> {
+    internal fun executeDagCommand(server: LanguageServer, command: Command): CompletableFuture<DagPreviewResult> {
         val commandId = when (command.command) {
             PREVIEW_DAG_CODE_LENS_COMMAND, null -> PREVIEW_DAG_COMMAND
             else -> command.command
@@ -283,8 +283,8 @@ internal fun dagNodeSymbolCandidates(label: String): List<String> {
         .distinct()
 }
 
-private data class DagCommand(val server: LanguageServer, val command: Command)
-private data class SourceLocation(val file: VirtualFile, val line: Int, val character: Int)
+internal data class DagCommand(val server: LanguageServer, val command: Command)
+internal data class SourceLocation(val file: VirtualFile, val line: Int, val character: Int)
 
 data class DagPreviewResult(
     val payload: Any?,
