@@ -137,7 +137,7 @@ object NextflowDagPreviewService {
         LOG.debug("NEXTFLOW_DAG node-click-no-local-target label='$label'")
     }
 
-    private fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
+    internal fun findLocalSymbol(project: Project, sourceFile: VirtualFile, symbolName: String): SourceLocation? {
         val files = mutableListOf<VirtualFile>()
         if (sourceFile.path.isNextflowPath()) files.add(sourceFile)
         ProjectFileIndex.getInstance(project).iterateContent { file ->
@@ -160,7 +160,7 @@ object NextflowDagPreviewService {
         return null
     }
 
-    private fun findDagCommand(
+    internal fun findDagCommand(
         server: LanguageServer,
         sourceFile: VirtualFile,
         caretLine: Int,
@@ -217,7 +217,7 @@ object NextflowDagPreviewService {
             }
     }
 
-    private fun executeDagCommand(server: LanguageServer, command: Command): CompletableFuture<DagPreviewResult> {
+    internal fun executeDagCommand(server: LanguageServer, command: Command): CompletableFuture<DagPreviewResult> {
         val commandId = when (command.command) {
             PREVIEW_DAG_CODE_LENS_COMMAND, null -> PREVIEW_DAG_COMMAND
             else -> command.command
@@ -251,26 +251,7 @@ object NextflowDagPreviewService {
             .notify(project)
     }
 
-    private fun String.symbolCandidates(): List<String> {
-        val normalized = trim()
-            .removePrefix("[")
-            .removeSuffix("]")
-            .removePrefix("(")
-            .removeSuffix(")")
-            .removePrefix("\"")
-            .removeSuffix("\"")
-            .replace(Regex("""\s+"""), " ")
-            .trim()
-        if (normalized.isBlank()) return emptyList()
-
-        val tokens = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
-            .findAll(normalized)
-            .map { it.value }
-            .filterNot { it in setOf("process", "workflow", "def", "params", "Channel") }
-            .toList()
-        return (listOf(normalized) + tokens.filter { it.any(Char::isUpperCase) || it.contains('_') })
-            .distinct()
-    }
+    private fun String.symbolCandidates(): List<String> = dagNodeSymbolCandidates(this)
 
     private fun Throwable.rootMessage(): String {
         var current: Throwable = this
@@ -281,8 +262,29 @@ object NextflowDagPreviewService {
     }
 }
 
-private data class DagCommand(val server: LanguageServer, val command: Command)
-private data class SourceLocation(val file: VirtualFile, val line: Int, val character: Int)
+internal fun dagNodeSymbolCandidates(label: String): List<String> {
+    val normalized = label.trim()
+        .removePrefix("[")
+        .removeSuffix("]")
+        .removePrefix("(")
+        .removeSuffix(")")
+        .removePrefix("\"")
+        .removeSuffix("\"")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+    if (normalized.isBlank()) return emptyList()
+
+    val tokens = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
+        .findAll(normalized)
+        .map { it.value }
+        .filterNot { it in setOf("process", "workflow", "def", "params", "Channel") }
+        .toList()
+    return (listOf(normalized) + tokens.filter { it.any(Char::isUpperCase) || it.contains('_') })
+        .distinct()
+}
+
+internal data class DagCommand(val server: LanguageServer, val command: Command)
+internal data class SourceLocation(val file: VirtualFile, val line: Int, val character: Int)
 
 data class DagPreviewResult(
     val payload: Any?,

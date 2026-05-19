@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Automated Integration Tests for LSP Features</title>
+<meta name="feature" content="automated-lsp-tests">
+<meta name="status" content="in-progress">
+<meta name="created" content="2026-05-18">
+<meta name="updated" content="2026-05-18"><!-- Phase 2 complete: 11 new integration tests (5 hover, 6 completion). Bug found: matchEntire→find in findConfigParamNames. junit-vintage-engine added for BasePlatformTestCase discovery. -->
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+         line-height: 1.6; }
+  .phase { margin: 1.5rem 0; }
+  .step { padding: 0.25rem 0; }
+  .step::before { content: "\2610"; margin-right: 0.5rem; }
+  .step.done::before { content: "\2611"; }
+</style>
+</head>
+<body>
+
+<h1>Automated Integration Tests for LSP Features</h1>
+
+<section id="context">
+<h2>Context</h2>
+<p>The plugin has 69 manual test cases (PARITY_CHECKLIST.md) but only 32 automated tests.
+Key user-facing features — CodeLens "Preview DAG", hover documentation, completion, diagnostic
+filtering, DAG node navigation, and symbol categorization — have no automated coverage. Every
+code change requires tedious manual verification. This plan adds layered automated tests:
+pure unit tests (fast, no IDE), platform integration tests (BasePlatformTestCase with fixtures),
+and mock-server tests (Proxy-based LanguageServer mocks).</p>
+</section>
+
+<section class="phase" id="phase-1">
+<h2>Phase 1: Pure Unit Tests</h2>
+<p>No IDE context needed. Fast, zero flakiness. Cover pure logic that currently has no tests.</p>
+<div class="step done" data-status="done">SymbolCategory.from() — 15 tests in NextflowSymbolCategoryTest (process/workflow/function/record/enum/other, priority rules, case insensitivity)</div>
+<div class="step done" data-status="done">displaySymbolName() — 7 tests in NextflowSymbolCategoryTest (prefix stripping for all types, unchanged when unprefixed, chained stripping)</div>
+<div class="step done" data-status="done">dagNodeSymbolCandidates() — 14 tests in DagSymbolCandidatesTest (brackets, quotes, whitespace, keywords, compound labels, dedup, case filtering)</div>
+<div class="step done" data-status="done">Diagnostic filtering — 7 tests in NextflowDiagnosticFilterTest (OFF/ERRORS/WARNINGS/PARANOID modes, null severity handling)</div>
+<div class="step done" data-status="done">variableHover() — 8 tests in NextflowHoverSupportTest (assignment hover, take: hint, multi-line, HTML escaping, edge cases)</div>
+</section>
+
+<section class="phase" id="phase-2">
+<h2>Phase 2: Platform Integration Tests</h2>
+<p>BasePlatformTestCase with fixture files. Tests the full contributor/provider pipeline.</p>
+<div class="step done" data-status="done">paramHover() with schema — verify hover HTML for params.genome includes type, description, default, enum</div>
+<div class="step done" data-status="done">paramHover() without schema — verify fallback to config-only default value</div>
+<div class="step done" data-status="done">Completion: PROCESS.out. — myFixture.completeBasic() verifies emit names appear</div>
+<div class="step done" data-status="done">Completion: params. — verify schema+config param names appear (also fixed bug: matchEntire→find in findConfigParamNames)</div>
+<div class="step done" data-status="done">Completion: Channel. — verify factory method names appear</div>
+<div class="step done" data-status="done">Completion: uppercase prefix in workflow — verify process names appear</div>
+</section>
+
+<section class="phase" id="phase-3">
+<h2>Phase 3: Mock-Server Integration Tests</h2>
+<p>Expand the Proxy mock pattern from NextflowLspProtocolTest to test LSP request/response flows.</p>
+<div class="step done" data-status="done">Build reusable MockLanguageServer returning canned codeLens, resolveCodeLens, executeCommand responses</div>
+<div class="step done" data-status="done">Test CodeLens retrieval — mock returns Preview DAG lens, verify findDagCommand selects closest to caret (+ ignores non-DAG lenses, falls back on resolve failure)</div>
+<div class="step done" data-status="done">Test CodeLens retry — mock returns empty then lens on attempt N, verify retry logic (+ fails after 8 attempts)</div>
+<div class="step done" data-status="done">Test DAG command execution — 14 DagPreviewResult tests (toMermaid, errorMessage) + 4 executeDagCommand tests (command mapping, argument passthrough)</div>
+<div class="step done" data-status="done">Test findLocalSymbol — 5 tests: process/workflow/def in same and different files, correct line/character, null for missing symbols</div>
+</section>
+
+<section class="phase" id="phase-4">
+<h2>Phase 4: Regression Guard Tests</h2>
+<p>Targeted tests for known fragile interactions.</p>
+<div class="step" data-status="pending">ensureDocumentSynchronized(force=false) + documentSymbol: verify no didOpen for editor-managed files even when followed by symbol requests</div>
+<div class="step" data-status="pending">Diagnostic mode switching: verify clearDiagnostics() re-publishes empty for all known URIs</div>
+</section>
+
+<section id="notes">
+<h2>Notes</h2>
+<p>Existing test patterns: pure @Test (kotlin.test) for unit tests, BasePlatformTestCase (JUnit 3 naming)
+for platform tests, java.lang.reflect.Proxy for mock LanguageServer. Fixture project at
+src/test/resources/fixtures/parity/ with main.nf, modules/, nextflow.config, nextflow_schema.json.</p>
+</section>
+
+</body>
+</html>

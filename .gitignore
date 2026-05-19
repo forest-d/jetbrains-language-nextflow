@@ -2,6 +2,9 @@
 build/
 .gradle/
 
+### Local release credentials ###
+.env
+
 ### IntelliJ IDEA ###
 .idea/
 *.iml

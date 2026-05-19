@@ -315,13 +315,7 @@ class NextflowProjectView(private val project: Project) : Disposable {
         return path.isNextflowPath()
     }
 
-    private fun String.toDisplaySymbolName(): String {
-        return removePrefix("process ")
-            .removePrefix("workflow ")
-            .removePrefix("function ")
-            .removePrefix("record ")
-            .removePrefix("enum ")
-    }
+    private fun String.toDisplaySymbolName(): String = displaySymbolName(this)
 
     companion object {
         private const val SERVER_ID = "io.nextflow.languageServer"
@@ -329,6 +323,15 @@ class NextflowProjectView(private val project: Project) : Disposable {
         private const val DOCUMENT_SYMBOL_RETRY_DELAY_MS = 250L
         private val LOG = Logger.getInstance(NextflowProjectView::class.java)
     }
+}
+
+internal fun displaySymbolName(name: String): String {
+    return name
+        .removePrefix("process ")
+        .removePrefix("workflow ")
+        .removePrefix("function ")
+        .removePrefix("record ")
+        .removePrefix("enum ")
 }
 
 private data class ProjectSymbol(
@@ -339,7 +342,7 @@ private data class ProjectSymbol(
     val category: SymbolCategory,
 )
 
-private enum class SymbolCategory(val title: String, val order: Int, val icon: Icon) {
+internal enum class SymbolCategory(val title: String, val order: Int, val icon: Icon) {
     PROCESSES("Processes", 0, SymbolIcon(Color(0x2E7D32))),
     WORKFLOWS("Workflows", 1, SymbolIcon(Color(0x1565C0))),
     FUNCTIONS("Functions", 2, SymbolIcon(Color(0x6A1B9A))),

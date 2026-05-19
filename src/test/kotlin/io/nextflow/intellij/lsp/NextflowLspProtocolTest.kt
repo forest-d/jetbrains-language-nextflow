@@ -5,8 +5,11 @@ import com.intellij.testFramework.LightVirtualFile
 import org.eclipse.lsp4j.DidOpenTextDocumentParams
 import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.services.TextDocumentService
+import org.eclipse.lsp4j.services.WorkspaceService
 import java.lang.reflect.Proxy
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 class NextflowLspProtocolTest : BasePlatformTestCase() {
@@ -54,6 +57,44 @@ class NextflowLspProtocolTest : BasePlatformTestCase() {
         assertEquals(file.toLspUriString(), didOpen.get().textDocument.uri)
         assertEquals("nextflow", didOpen.get().textDocument.languageId)
         assertEquals("workflow { main: }", didOpen.get().textDocument.text)
+    }
+
+    fun testNormalStartupWarmUpDoesNotSendDidOpenForProjectFiles() {
+        myFixture.addFileToProject("main.nf", "workflow { }")
+
+        val didOpenCount = AtomicInteger(0)
+        val documentSymbolCount = AtomicInteger(0)
+        val server = languageServerCapturingWarmUpCalls(didOpenCount, documentSymbolCount)
+
+        NextflowLspRuntime.warmUpInitializedServer(project, server).get(5, TimeUnit.SECONDS)
+
+        assertEquals(
+            "Normal startup warm-up must not synthesize didOpen for project files. " +
+                "LSP4IJ owns document lifecycle during startup; an extra didOpen can reset server state " +
+                "after CodeLens appears, making Preview DAG vanish.",
+            0,
+            didOpenCount.get()
+        )
+        assertTrue(
+            "Startup warm-up should still request document symbols without taking over document lifecycle",
+            documentSymbolCount.get() > 0
+        )
+    }
+
+    fun testForcedWarmUpSendsDidOpenForProjectFilesAfterRestart() {
+        myFixture.addFileToProject("main.nf", "workflow { }")
+
+        val didOpenCount = AtomicInteger(0)
+        val documentSymbolCount = AtomicInteger(0)
+        val server = languageServerCapturingWarmUpCalls(didOpenCount, documentSymbolCount)
+
+        NextflowLspRuntime.warmUpInitializedServer(project, server, forceDocumentSync = true).get(5, TimeUnit.SECONDS)
+
+        assertTrue(
+            "Forced warm-up after language-server restart must re-send didOpen for project files",
+            didOpenCount.get() > 0
+        )
+        assertTrue(documentSymbolCount.get() > 0)
     }
 
     fun testScriptFileUsesNextflowLanguageId() {
@@ -125,4 +166,53 @@ class NextflowLspProtocolTest : BasePlatformTestCase() {
             }
         } as LanguageServer
     }
+
+    private fun languageServerCapturingWarmUpCalls(
+        didOpenCount: AtomicInteger,
+        documentSymbolCount: AtomicInteger,
+    ): LanguageServer {
+        val textDocumentService = Proxy.newProxyInstance(
+            TextDocumentService::class.java.classLoader,
+            arrayOf(TextDocumentService::class.java),
+        ) { proxy, method, args ->
+            when (method.name) {
+                "didOpen" -> {
+                    didOpenCount.incrementAndGet()
+                    null
+                }
+                "documentSymbol" -> {
+                    documentSymbolCount.incrementAndGet()
+                    CompletableFuture.completedFuture(emptyList<Any>())
+                }
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> proxy === args?.firstOrNull()
+                else -> CompletableFuture.completedFuture(null)
+            }
+        } as TextDocumentService
+
+        val workspaceService = Proxy.newProxyInstance(
+            WorkspaceService::class.java.classLoader,
+            arrayOf(WorkspaceService::class.java),
+        ) { proxy, method, args ->
+            when (method.name) {
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> proxy === args?.firstOrNull()
+                else -> null
+            }
+        } as WorkspaceService
+
+        return Proxy.newProxyInstance(
+            LanguageServer::class.java.classLoader,
+            arrayOf(LanguageServer::class.java),
+        ) { proxy, method, args ->
+            when (method.name) {
+                "getTextDocumentService" -> textDocumentService
+                "getWorkspaceService" -> workspaceService
+                "hashCode" -> System.identityHashCode(proxy)
+                "equals" -> proxy === args?.firstOrNull()
+                else -> CompletableFuture.completedFuture(null)
+            }
+        } as LanguageServer
+    }
+
 }
