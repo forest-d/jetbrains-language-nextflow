@@ -43,21 +43,29 @@ object NextflowLspRuntime {
                     return@thenCompose CompletableFuture.completedFuture<Void>(null)
                 }
                 item.initializedServer.thenCompose { server ->
-                    ensureWorkspaceInitialized(project, server)
-                        .thenCompose {
-                            if (forceDocumentSync) {
-                                synchronizeProjectDocuments(project, server, force = true)
-                            } else {
-                                CompletableFuture.completedFuture(null)
-                            }
-                        }
-                        .thenCompose { requestProjectDocumentSymbols(project, server) }
+                    warmUpInitializedServer(project, server, forceDocumentSync)
                 }
             }
             .exceptionally { error ->
                 LOG.warn("Failed to warm up Nextflow LSP", error)
                 null
             }
+    }
+
+    internal fun warmUpInitializedServer(
+        project: Project,
+        server: LanguageServer,
+        forceDocumentSync: Boolean = false,
+    ): CompletableFuture<Void> {
+        return ensureWorkspaceInitialized(project, server)
+            .thenCompose {
+                if (forceDocumentSync) {
+                    synchronizeProjectDocuments(project, server, force = true)
+                } else {
+                    CompletableFuture.completedFuture(null)
+                }
+            }
+            .thenCompose { requestProjectDocumentSymbols(project, server) }
     }
 
     fun ensureWorkspaceInitialized(project: Project, server: LanguageServer): CompletableFuture<Void> {
