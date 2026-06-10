@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <title>Automated Integration Tests for LSP Features</title>
 <meta name="feature" content="automated-lsp-tests">
-<meta name="status" content="in-progress">
+<meta name="status" content="done">
 <meta name="created" content="2026-05-18">
-<meta name="updated" content="2026-05-18"><!-- Phase 2 complete: 11 new integration tests (5 hover, 6 completion). Bug found: matchEntire→find in findConfigParamNames. junit-vintage-engine added for BasePlatformTestCase discovery. -->
+<meta name="updated" content="2026-06-10"><!-- Phase 2 complete: 11 new integration tests (5 hover, 6 completion). Bug found: matchEntire→find in findConfigParamNames. junit-vintage-engine added for BasePlatformTestCase discovery. -->
 <style>
   body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
          line-height: 1.6; }
@@ -64,8 +64,8 @@ and mock-server tests (Proxy-based LanguageServer mocks).</p>
 <section class="phase" id="phase-4">
 <h2>Phase 4: Regression Guard Tests</h2>
 <p>Targeted tests for known fragile interactions.</p>
-<div class="step" data-status="pending">ensureDocumentSynchronized(force=false) + documentSymbol: verify no didOpen for editor-managed files even when followed by symbol requests</div>
-<div class="step" data-status="pending">Diagnostic mode switching: verify clearDiagnostics() re-publishes empty for all known URIs</div>
+<div class="step done" data-status="done">ensureDocumentSynchronized(force=false) + documentSymbol: verify no didOpen for editor-managed files even when followed by symbol requests</div>
+<div class="step done" data-status="done">Diagnostic mode switching: verify clearDiagnostics() re-publishes empty for all known URIs</div>
 </section>
 
 <section id="notes">
@@ -73,6 +73,12 @@ and mock-server tests (Proxy-based LanguageServer mocks).</p>
 <p>Existing test patterns: pure @Test (kotlin.test) for unit tests, BasePlatformTestCase (JUnit 3 naming)
 for platform tests, java.lang.reflect.Proxy for mock LanguageServer. Fixture project at
 src/test/resources/fixtures/parity/ with main.nf, modules/, nextflow.config, nextflow_schema.json.</p>
+<p>2026-06-10 — Phase 4 complete. NextflowLspRuntimeTest (4 tests): recording LanguageServer proxy verifies
+no didOpen/didChange for editor-managed files with force=false (including the warm-up + documentSymbol flow),
+didOpen for non-editor files, and didOpen with force=true (post-restart path).
+NextflowLanguageClientDiagnosticsTest (3 tests): clearDiagnostics() re-publishes empty for all known URIs,
+including URIs whose diagnostics were fully filtered by OFF mode. Required making NextflowLanguageClient open
+with a protected open doPublishDiagnostics() hook (behavior unchanged). All 144 tests green. Plan done.</p>
 </section>
 
 </body>

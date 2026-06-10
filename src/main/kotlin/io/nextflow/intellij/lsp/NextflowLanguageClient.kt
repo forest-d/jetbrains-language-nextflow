@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
  * client filters published diagnostics on the IDE side based on the configured
  * [ErrorReportingMode].
  */
-class NextflowLanguageClient(project: Project) : LanguageClientImpl(project) {
+open class NextflowLanguageClient(project: Project) : LanguageClientImpl(project) {
     private val publishedUris: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     init {
@@ -39,7 +39,7 @@ class NextflowLanguageClient(project: Project) : LanguageClientImpl(project) {
         publishedUris.add(params.uri)
         val mode = NextflowSettings.getInstance().state.errorReportingMode
         params.diagnostics = filterDiagnostics(params.diagnostics, mode)
-        super.publishDiagnostics(params)
+        doPublishDiagnostics(params)
     }
 
     /**
@@ -49,8 +49,13 @@ class NextflowLanguageClient(project: Project) : LanguageClientImpl(project) {
      */
     fun clearDiagnostics() {
         for (uri in publishedUris) {
-            super.publishDiagnostics(PublishDiagnosticsParams(uri, emptyList()))
+            doPublishDiagnostics(PublishDiagnosticsParams(uri, emptyList()))
         }
+    }
+
+    /** Forwards to LSP4IJ. Overridable so tests can observe what is actually published. */
+    protected open fun doPublishDiagnostics(params: PublishDiagnosticsParams) {
+        super.publishDiagnostics(params)
     }
 
     companion object {

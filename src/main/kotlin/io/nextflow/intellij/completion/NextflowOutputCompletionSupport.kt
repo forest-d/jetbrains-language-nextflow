@@ -10,6 +10,7 @@ object NextflowOutputCompletionSupport {
     private val paramsAccessRegex = Regex("""(?:^|[^\w])params\.([A-Za-z_][A-Za-z0-9_]*)?$""")
     private val channelAccessRegex = Regex("""(?:^|[^\w])Channel\.([A-Za-z_][A-Za-z0-9_]*)?$""")
     private val processHeaderRegex = Regex("""\bprocess\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{""")
+    private val workflowHeaderRegex = Regex("""\bworkflow\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{""")
     private val includeEntryRegex = Regex("""\binclude\s*\{\s*([^}]+)\s*}\s*from\b""")
     private val identifierRegex = Regex("""[A-Za-z_][A-Za-z0-9_]*$""")
     private val configParamRegex = Regex("""^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=""")
@@ -77,6 +78,13 @@ object NextflowOutputCompletionSupport {
                 .filter { it.matches(Regex("""[A-Za-z_][A-Za-z0-9_]*""")) }
         }
         return (localProcesses + includedEntries).distinct().toList()
+    }
+
+    fun findWorkflowNames(text: String): List<String> {
+        return workflowHeaderRegex.findAll(text)
+            .map { it.groupValues[1] }
+            .distinct()
+            .toList()
     }
 
     fun findParamNames(file: PsiFile): List<String> {

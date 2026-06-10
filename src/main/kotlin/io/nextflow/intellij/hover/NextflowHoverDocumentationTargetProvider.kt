@@ -27,7 +27,10 @@ class NextflowHoverDocumentationTargetProvider : DocumentationTargetProvider {
 
 private class NextflowHoverDocumentationTarget(private val html: String) : DocumentationTarget {
     override fun createPointer(): Pointer<out DocumentationTarget> {
-        return Pointer.hardPointer(this)
+        // The target is immutable (plain HTML snapshot), so a strong-reference
+        // pointer is safe. Implemented as a lambda instead of the experimental
+        // Pointer.hardPointer() factory to avoid an extra experimental API usage.
+        return Pointer { this }
     }
 
     override fun computePresentation(): TargetPresentation {

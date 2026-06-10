@@ -71,16 +71,22 @@ class NextflowOutputCompletionContributor : CompletionContributor() {
         val prefix = NextflowOutputCompletionSupport.processPrefixAt(text, parameters.offset) ?: return null
         val processes = NextflowOutputCompletionSupport.findProcessNames(text)
             .filter { it.startsWith(prefix) }
+        val workflows = NextflowOutputCompletionSupport.findWorkflowNames(text)
+            .filter { it.startsWith(prefix) && it !in processes }
 
-        if (processes.isEmpty()) return null
+        if (processes.isEmpty() && workflows.isEmpty()) return null
 
-        addItems(result, prefix, processes, "process")
+        addTypedItems(result, prefix, processes.map { it to "process" } + workflows.map { it to "workflow" })
         return Unit
     }
 
     private fun addItems(result: CompletionResultSet, prefix: String, labels: List<String>, typeText: String) {
+        addTypedItems(result, prefix, labels.map { it to typeText })
+    }
+
+    private fun addTypedItems(result: CompletionResultSet, prefix: String, items: List<Pair<String, String>>) {
         val prefixedResult = result.withPrefixMatcher(prefix)
-        labels.forEach { label ->
+        items.forEach { (label, typeText) ->
             prefixedResult.addElement(
                 LookupElementBuilder.create(label)
                     .withTypeText(typeText, true)

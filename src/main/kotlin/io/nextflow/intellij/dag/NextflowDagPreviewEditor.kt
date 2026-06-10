@@ -39,6 +39,7 @@ class NextflowDagPreviewEditor(
     private val navigationQuery = browser?.let { JBCefJSQuery.create(it as JBCefBrowserBase) }
     private val textArea = JBTextArea(previewFile.mermaid)
     private val refreshTimer = Timer(750) { refresh() }
+    private var lastHtmlFile: Path? = null
 
     init {
         refreshTimer.isRepeats = false
@@ -103,10 +104,15 @@ class NextflowDagPreviewEditor(
         textArea.text = mermaid
         if (browser != null) {
             val html = buildHtml(mermaid)
+            // A fresh file per render so JCEF never serves a stale cached page.
             val htmlFile = Files.createTempFile("nextflow-dag-", ".html")
             Files.writeString(htmlFile, html)
             htmlFile.toFile().deleteOnExit()
             browser.loadURL(htmlFile.toUri().toString())
+            // The previous render's file is superseded; delete it eagerly instead of
+            // letting auto-refresh accumulate temp files until JVM exit.
+            lastHtmlFile?.let { runCatching { Files.deleteIfExists(it) } }
+            lastHtmlFile = htmlFile
         }
     }
 
@@ -135,6 +141,8 @@ class NextflowDagPreviewEditor(
             refreshTimer.stop()
             navigationQuery?.dispose()
             browser?.dispose()
+            lastHtmlFile?.let { runCatching { Files.deleteIfExists(it) } }
+            lastHtmlFile = null
         }
     }
 

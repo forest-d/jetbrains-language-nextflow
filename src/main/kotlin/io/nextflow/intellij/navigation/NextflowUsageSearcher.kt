@@ -167,13 +167,15 @@ object NextflowUsageSupport {
         originOffset: Int,
     ): UsageSearchResult {
         val files = nextflowFiles(project)
-        val isGlobal = files.any { file ->
-            val text = runCatching { VfsUtilCore.loadText(file) }.getOrNull() ?: return@any false
-            isDeclaredProcessOrFunction(text, symbolName)
+        // Load each file once; the text is reused for the global-declaration check and the scan.
+        val fileTexts = files.mapNotNull { file ->
+            runCatching { VfsUtilCore.loadText(file) }.getOrNull()?.let { file to it }
         }
+        val isGlobal = fileTexts.any { (_, text) -> isDeclaredProcessOrFunction(text, symbolName) }
 
         if (!isGlobal) {
-            val text = runCatching { VfsUtilCore.loadText(originFile) }.getOrNull()
+            val text = fileTexts.firstOrNull { (file, _) -> file == originFile }?.second
+                ?: runCatching { VfsUtilCore.loadText(originFile) }.getOrNull()
                 ?: return UsageSearchResult("local-read-failed", files.size, emptyList())
             val scope = containingBlockRange(text, originOffset) ?: text.indices
             return UsageSearchResult(
@@ -187,8 +189,7 @@ object NextflowUsageSupport {
         return UsageSearchResult(
             mode = "project-global",
             filesScanned = files.size,
-            locations = files.flatMap { file ->
-                val text = runCatching { VfsUtilCore.loadText(file) }.getOrNull() ?: return@flatMap emptyList()
+            locations = fileTexts.flatMap { (file, text) ->
                 findReferenceOffsets(text, symbolName)
                     .map { UsageLocation(file, it) }
             },
@@ -196,8 +197,12 @@ object NextflowUsageSupport {
     }
 
     fun findReferenceOffsets(text: String, symbolName: String): List<Int> {
+        // Collect declaration ranges once instead of re-scanning the whole text per occurrence.
+        val declarationRanges =
+            declarationRegex(PROCESS_DECLARATION_PATTERN, symbolName).findAll(text).map { it.range }.toList() +
+                declarationRegex(FUNCTION_DECLARATION_PATTERN, symbolName).findAll(text).map { it.range }
         return findWholeWordOccurrences(text, symbolName)
-            .filterNot { isDeclaration(text, symbolName, it) }
+            .filterNot { offset -> declarationRanges.any { offset in it } }
     }
 
     fun findReferenceOffsets(text: String, symbolName: String, scope: IntRange): List<Int> {
@@ -214,11 +219,6 @@ object NextflowUsageSupport {
 
     private fun isIdentifierPart(char: Char): Boolean {
         return char == '_' || char.isLetterOrDigit()
-    }
-
-    private fun isDeclaration(text: String, symbolName: String, offset: Int): Boolean {
-        return declarationRegex(PROCESS_DECLARATION_PATTERN, symbolName).findAll(text).any { it.range.contains(offset) } ||
-            declarationRegex(FUNCTION_DECLARATION_PATTERN, symbolName).findAll(text).any { it.range.contains(offset) }
     }
 
     private fun declarationRegex(pattern: String, symbolName: String): Regex {

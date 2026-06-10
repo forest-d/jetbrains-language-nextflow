@@ -65,7 +65,12 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <p>Bug fixes for Mermaid diagram generation</p>
+            <ul>
+                <li>Code completion now suggests named workflows alongside process names</li>
+                <li>Fix language-server release selection so the newest version is chosen (numeric comparison, e.g. v26.04.10 over v26.04.9)</li>
+                <li>DAG preview no longer accumulates temporary files across refreshes</li>
+                <li>Faster Find Usages on large projects</li>
+            </ul>
         """.trimIndent()
     }
 

@@ -64,19 +64,20 @@ object LanguageServerDownloader {
                 .accept("application/vnd.github.v3+json")
                 .readString()
 
-            // Find tags matching our prefix
-            val tagPattern = Regex(""""tag_name"\s*:\s*"(${Regex.escape(versionPrefix)}\.[^"]+)"""")
-            val tags = tagPattern.findAll(responseText)
-                .map { it.groupValues[1] }
-                .filter { !it.endsWith("PREVIEW") }
-                .sortedDescending()
-                .toList()
-
-            tags.firstOrNull()
+            selectLatestVersionTag(responseText, versionPrefix)
         } catch (e: Exception) {
             LOG.info("Failed to query GitHub releases: ${e.message}")
             null
         }
+    }
+
+    internal fun selectLatestVersionTag(releasesJson: String, versionPrefix: String): String? {
+        val tagPattern = Regex(""""tag_name"\s*:\s*"(${Regex.escape(versionPrefix)}\.[^"]+)"""")
+        return tagPattern.findAll(releasesJson)
+            .map { it.groupValues[1] }
+            .filter { !it.endsWith("PREVIEW") }
+            // Numeric comparison: a lexicographic sort would rank v26.04.9 above v26.04.10
+            .maxWithOrNull(::compareVersionTags)
     }
 
     fun getOrDownload(versionPrefix: String = DEFAULT_VERSION_PREFIX): Path? {

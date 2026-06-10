@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fix Marketplace Deprecated and Experimental API Warnings</title>
+<meta name="feature" content="fix-marketplace-api-warnings">
+<meta name="status" content="done">
+<meta name="created" content="2026-05-18">
+<meta name="updated" content="2026-06-10">
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+         line-height: 1.6; }
+  .phase { margin: 1.5rem 0; }
+  .step { padding: 0.25rem 0; }
+  .step::before { content: "\2610"; margin-right: 0.5rem; }
+  .step.done::before { content: "\2611"; }
+</style>
+</head>
+<body>
+
+<h1>Fix Marketplace Deprecated and Experimental API Warnings</h1>
+
+<section id="context">
+<h2>Context</h2>
+<p>The JetBrains marketplace verifier reports 4 deprecated API usages (SymbolInformation getters from LSP4J)
+and 5 experimental API usages (Pointer from IntelliJ Platform, LSPClientFeatures from LSP4IJ).
+Goal: eliminate as many warnings as possible while preserving all plugin behavior.</p>
+</section>
+
+<section class="phase" id="phase-1">
+<h2>Phase 1: SymbolInformation deprecated API (4 warnings) — UNAVOIDABLE</h2>
+<p>Investigated and determined these warnings cannot be eliminated. The SymbolInformation class and
+ALL its getters are deprecated in LSP4J (the whole class is deprecated in favor of WorkspaceSymbol/DocumentSymbol).
+There is no non-deprecated way to read fields from a SymbolInformation object. The LSP4J Either
+deserialization layer can route responses to the SymbolInformation branch depending on JSON structure,
+so removing the handler causes regressions. The existing @Suppress("DEPRECATION") with explanatory
+comment is the correct approach.</p>
+<div class="step done" data-status="done">Verified Nextflow LS server-side sends DocumentSymbol/WorkspaceSymbol</div>
+<div class="step done" data-status="done">Verified LSP4J deserialization adapters (DocumentSymbolResponseAdapter, WorkspaceSymbolResponseAdapter)</div>
+<div class="step done" data-status="done">Attempted removal — caused CodeLens regression, reverted</div>
+<div class="step done" data-status="done">Conclusion: these 4 warnings are unavoidable — keep @Suppress("DEPRECATION")</div>
+</section>
+
+<section class="phase" id="phase-2">
+<h2>Phase 2: Reduce Pointer experimental API (2 warnings → 1)</h2>
+<p>Replace Pointer.hardPointer() static call with direct Pointer lambda implementation.</p>
+<div class="step done" data-status="done">Replace Pointer.hardPointer(this) with Pointer lambda in NextflowHoverDocumentationTargetProvider.kt</div>
+</section>
+
+<section class="phase" id="phase-3">
+<h2>Phase 3: Assess LSPClientFeatures experimental API (3 warnings)</h2>
+<p>Check if LSP4IJ upgrade or removal of override can eliminate warnings.</p>
+<div class="step done" data-status="done">Check if newer LSP4IJ versions have stabilized LSPClientFeatures — still @ApiStatus.Experimental on upstream main as of 2026-06; upgrading would not remove the warnings</div>
+<div class="step done" data-status="done">Check whether createClientFeatures() override can be removed — no: it is the only way to enable workspace/didChangeConfiguration push, which settings sync depends on</div>
+<div class="step done" data-status="done">Documented with explanatory comment in NextflowLanguageServerFactory.kt</div>
+</section>
+
+<section class="phase" id="phase-4">
+<h2>Phase 4: Verify and document</h2>
+<div class="step done" data-status="done">Run plugin verifier to confirm reduced warning count — Compatible on all 6 IDE targets; Pointer.hardPointer() warning eliminated (5 → 3 experimental usages on IU-262, 4 on IU-261 incl. the contract-required Pointer interface reference)</div>
+<div class="step done" data-status="done">Add comments on remaining unavoidable experimental usages (NextflowLanguageServerFactory.kt, NextflowHoverDocumentationTargetProvider.kt)</div>
+<div class="step done" data-status="done">Regression coverage: full automated suite (144 tests) green, incl. new guards for document sync (CodeLens path) and diagnostics clearing; no live-IDE manual pass performed</div>
+</section>
+
+<section id="notes">
+<h2>Notes</h2>
+<p>Research confirmed: Pointer interface and LSPClientFeatures class are required by API contracts with no stable alternatives.
+SymbolInformation getters are the only way to read data from that class — elimination requires removing the code path entirely.</p>
+<p><strong>2026-06-10 — Done.</strong> Pointer.hardPointer(this) replaced with a Pointer lambda; the hardPointer()
+invocation warning is gone (only the unavoidable Pointer interface reference remains on some IDE versions).
+LSPClientFeatures is still @ApiStatus.Experimental on LSP4IJ upstream main, so upgrading past 0.19.3 would not help;
+the createClientFeatures() override cannot be removed without losing workspace/didChangeConfiguration push (settings sync).
+Both unavoidable usages are now documented in code. Verifier (IC-243/251/252, IU-253/261/262): Compatible everywhere;
+4 deprecated (SymbolInformation, unavoidable) + 3 experimental (LSPClientFeatures) on the newest IDE. Older IDE reports
+show extra TargetPresentation experimental hits that have since been stabilized upstream — not actionable.
+Reports: build/reports/pluginVerifier/.</p>
+</section>
+
+</body>
+</html>

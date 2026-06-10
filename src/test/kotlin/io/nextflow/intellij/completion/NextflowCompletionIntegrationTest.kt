@@ -211,4 +211,31 @@ class NextflowCompletionIntegrationTest : BasePlatformTestCase() {
         }
     }
 
+    fun testProcessNameCompletionIncludesNamedWorkflows() {
+        myFixture.configureByText(
+            "main.nf",
+            """
+            process ALIGN_READS {
+                script:
+                "align"
+            }
+
+            workflow ALIGN_AND_QC {
+                ALIGN_READS()
+            }
+
+            workflow {
+                AL<caret>
+            }
+            """.trimIndent(),
+        )
+
+        myFixture.completeBasic()
+        val lookupStrings = myFixture.lookupElementStrings
+
+        assertNotNull("completion should return items for uppercase prefix", lookupStrings)
+        assertTrue("should include process 'ALIGN_READS'", "ALIGN_READS" in lookupStrings!!)
+        assertTrue("should include workflow 'ALIGN_AND_QC'", "ALIGN_AND_QC" in lookupStrings)
+    }
+
 }

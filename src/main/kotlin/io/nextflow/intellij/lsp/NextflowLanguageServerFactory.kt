@@ -16,6 +16,11 @@ class NextflowLanguageServerFactory : LanguageServerFactory {
         return NextflowLanguageClient(project)
     }
 
+    // LSPClientFeatures is @ApiStatus.Experimental in LSP4IJ (still experimental on
+    // upstream main as of 2026-06). There is no stable alternative: this override is
+    // the only way to make LSP4IJ push workspace/didChangeConfiguration when settings
+    // change, which the settings sync (diagnostic mode, error reporting) depends on.
+    // The resulting plugin-verifier experimental-API warnings are unavoidable.
     override fun createClientFeatures(): LSPClientFeatures {
         return LSPClientFeatures()
             .setConfigurationFeature(

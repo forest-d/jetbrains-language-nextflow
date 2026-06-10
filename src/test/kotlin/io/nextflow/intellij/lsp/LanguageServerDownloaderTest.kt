@@ -14,6 +14,39 @@ class LanguageServerDownloaderTest {
     }
 
     @Test
+    fun `selects latest release tag numerically not lexicographically`() {
+        val json = """
+            [
+              {"tag_name": "v26.04.9"},
+              {"tag_name": "v26.04.10"},
+              {"tag_name": "v26.04.2"}
+            ]
+        """.trimIndent()
+
+        assertEquals("v26.04.10", LanguageServerDownloader.selectLatestVersionTag(json, "v26.04"))
+    }
+
+    @Test
+    fun `ignores preview tags and other version prefixes`() {
+        val json = """
+            [
+              {"tag_name": "v26.04.3-PREVIEW"},
+              {"tag_name": "v26.04.1"},
+              {"tag_name": "v25.10.7"}
+            ]
+        """.trimIndent()
+
+        assertEquals("v26.04.1", LanguageServerDownloader.selectLatestVersionTag(json, "v26.04"))
+    }
+
+    @Test
+    fun `returns null when no tag matches the prefix`() {
+        val json = """[{"tag_name": "v25.10.7"}]"""
+
+        assertEquals(null, LanguageServerDownloader.selectLatestVersionTag(json, "v26.04"))
+    }
+
+    @Test
     fun `finds newest cached jar for selected version prefix`() {
         val cacheRoot = createTempDirectory("nextflow-lsp-test")
         val previousRoot = System.getProperty("nextflow.lsp.cacheRoot")

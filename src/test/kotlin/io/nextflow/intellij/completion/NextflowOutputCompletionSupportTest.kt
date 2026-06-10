@@ -96,6 +96,29 @@ class NextflowOutputCompletionSupportTest {
     }
 
     @Test
+    fun `extracts named workflow names`() {
+        val text = """
+            workflow ALIGN_AND_QC {
+            }
+
+            workflow {
+                ALIGN_AND_QC()
+            }
+        """.trimIndent()
+
+        val names = NextflowOutputCompletionSupport.findWorkflowNames(text)
+
+        assertEquals(listOf("ALIGN_AND_QC"), names)
+    }
+
+    @Test
+    fun `deduplicates repeated workflow names`() {
+        val text = "workflow QC {\n}\nworkflow QC {\n}"
+
+        assertEquals(listOf("QC"), NextflowOutputCompletionSupport.findWorkflowNames(text))
+    }
+
+    @Test
     fun `does not infer outputs for included process names from include statements alone`() {
         val text = """
             include { ALIGN_READS } from './modules/sample_module'
